@@ -185,11 +185,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🗺️ Roadmap
 
-- [ ] Plan switching (sequential, book-based, topic-based, devotional)
-- [ ] Sharing (share verse, export notes)
-- [ ] iOS version
+- [x] Sharing (share verse, export notes) - ✅ Implemented
+- [x] Home screen widgets (Verse of the Day, Progress, Encouragement) - ✅ Implemented
+- [x] Local backups (export/restore notes, progress, favorites) - ✅ Implemented
+- [ ] Plan switching (book-based, topic-based, devotional plans)
 - [ ] Encrypted local backups
-- [ ] Additional home screen widgets
+- [ ] iOS version
 - [ ] Audio Bible integration
 
 ---
