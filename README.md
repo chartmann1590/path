@@ -182,10 +182,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - Inspired by Duolingo's habit-building approach
 - Built with modern Android development best practices
 
-## 📝 Development Notes
-
-For detailed development information, see [CLAUDE.md](CLAUDE.md) and [prp.md](prp.md).
-
 ## 🗺️ Roadmap
 
 - [ ] Plan switching (sequential, book-based, topic-based, devotional)
