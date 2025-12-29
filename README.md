@@ -164,7 +164,7 @@ app/src/main/java/com/path/app/
 - **No accounts required**: No login, no cloud sync
 - **Local-only storage**: All data (notes, progress, preferences) stored on your device
 - **Optional AI**: AI features connect only to your self-hosted Ollama server
-- **No tracking**: No analytics, no data collection
+- **Analytics & Ads**: Uses Google Analytics for app usage insights and displays Google AdMob ads
 
 See [PRIVACY.md](PRIVACY.md) for detailed privacy information.
 
