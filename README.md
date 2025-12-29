@@ -2,6 +2,8 @@
 
 <div align="center">
   <img src="images/icon.png" alt="Path App Icon" width="200" height="200">
+  
+  [![Watch Promo Video](https://img.shields.io/badge/YouTube-Watch%20Promo%20Video-red?style=for-the-badge&logo=youtube)](https://youtube.com/shorts/H8feTTxo0aQ?feature=share)
 </div>
 
 A calm, mobile-first Bible study app that helps Christians stay focused and consistent through short daily study plans, gentle encouragement, and optional AI-powered insights.
