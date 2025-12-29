@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last Updated**: [Date]
+**Last Updated**: January 2025
 
 ## Introduction
 
@@ -11,20 +11,50 @@
 Path is built with privacy as a fundamental design principle:
 
 1. **No Accounts Required**: You don't need to create an account or provide any personal information to use Path.
-2. **Local-Only Storage**: All your data is stored exclusively on your device.
-3. **No Cloud Sync**: We don't sync, upload, or transmit your data to any servers.
-4. **No Tracking**: We don't collect analytics, usage data, or any information about how you use the app.
+2. **Local-Only Storage**: All your study data (notes, progress, preferences) is stored exclusively on your device.
+3. **No Cloud Sync**: We don't sync, upload, or transmit your study data to any servers.
+4. **Minimal Analytics**: We use Google Analytics to understand app usage patterns and improve the app experience.
 
-## Information We Don't Collect
+## Information We Collect
+
+### Google Analytics
+
+Path uses **Google Firebase Analytics** to collect anonymous usage data to help us understand how the app is used and improve the user experience. This includes:
+
+- **App Events**: Such as chapters read, searches performed, notes created, favorites added
+- **Screen Views**: Which screens users visit
+- **Feature Usage**: Which features are used most frequently
+- **Crash Reports**: Information about app crashes and errors (via Firebase Crashlytics)
+
+**What we don't collect via Analytics:**
+- Personal identification information (name, email, phone number)
+- Your notes, highlights, or study content
+- Your reading progress or personal preferences
+- Location data
+- Contact information
+
+Analytics data is collected anonymously and aggregated. It helps us understand general usage patterns but cannot be used to identify individual users.
+
+### Google AdMob
+
+Path displays **Google AdMob advertisements** to support app development. AdMob may collect:
+
+- **Advertising ID**: Device advertising identifier (can be reset in device settings)
+- **App Information**: App name and version
+- **Device Information**: Device type, operating system version
+- **Ad Interaction Data**: Whether ads were viewed or clicked
+
+AdMob uses this information to show relevant ads and measure ad performance. You can opt out of personalized ads in your device's Google account settings.
+
+### Information We Don't Collect
 
 Path does **not** collect, store, or transmit:
 
 - Personal identification information (name, email, phone number)
-- Usage analytics or app behavior data
-- Device identifiers or advertising IDs
+- Your notes, highlights, or study content
+- Your reading progress or personal preferences (stored locally only)
 - Location data
 - Contact information
-- Any data that leaves your device
 
 ## Information Stored Locally
 
@@ -76,6 +106,23 @@ No personal information is transmitted in either case.
 
 ## Third-Party Services
 
+### Google Firebase
+
+Path uses Google Firebase services:
+
+- **Firebase Analytics**: Collects anonymous usage analytics (see "Information We Collect" above)
+- **Firebase Crashlytics**: Collects crash reports and error logs to help us fix bugs
+- **Firebase Performance Monitoring**: Monitors app performance metrics
+
+Firebase is operated by Google and subject to [Google's Privacy Policy](https://policies.google.com/privacy). Analytics data is collected anonymously and cannot be used to identify you personally.
+
+### Google AdMob
+
+Path displays advertisements through Google AdMob. AdMob may collect advertising identifiers and device information to show relevant ads. AdMob is subject to [Google's Privacy Policy](https://policies.google.com/privacy) and [AdMob's policies](https://support.google.com/admob/answer/6128543).
+
+You can opt out of personalized ads:
+- **Android**: Settings → Google → Ads → Opt out of Ads Personalization
+
 ### Bible API
 
 Path uses [bible-api.com](https://bible-api.com/) to fetch Bible text when not available locally. This is a public API that doesn't require authentication. We only send book, chapter, and verse references (e.g., "John 3:16"). Please review their privacy policy if you have concerns.
@@ -94,7 +141,7 @@ Since all data is stored locally on your device:
 
 ## Children's Privacy
 
-Path does not collect any information from anyone, including children. Since no data is collected or transmitted, we comply with all applicable children's privacy regulations.
+Path is designed to be safe for users of all ages. While we collect anonymous analytics data and display ads, we do not collect personal identification information. For users under 13 (or applicable age in your jurisdiction), we recommend parental supervision when using apps with advertising. We comply with applicable children's privacy regulations including COPPA.
 
 ## Changes to This Privacy Policy
 
@@ -102,12 +149,18 @@ We may update this Privacy Policy from time to time. We will notify you of any c
 
 ## Your Rights
 
-Since Path doesn't collect or transmit your data:
+### Your Study Data
 
-- **Access**: All your data is accessible through the app interface
-- **Deletion**: Uninstall the app or clear app data to delete everything
-- **Portability**: Export features (in development) will allow you to export your notes
+- **Access**: All your study data (notes, progress, preferences) is accessible through the app interface
+- **Deletion**: Uninstall the app or clear app data to delete all local study data
+- **Portability**: Export features allow you to export your notes
 - **Correction**: You can edit or delete notes and preferences directly in the app
+
+### Analytics and Advertising Data
+
+- **Opt Out of Personalized Ads**: You can opt out in your device's Google account settings (Settings → Google → Ads → Opt out of Ads Personalization)
+- **Reset Advertising ID**: You can reset your device's advertising ID in Android settings
+- **Analytics**: Analytics data is collected anonymously and cannot be directly deleted, but it cannot be used to identify you personally
 
 ## Contact
 
@@ -122,9 +175,13 @@ Path is designed to comply with:
 - Children's Online Privacy Protection Act (COPPA)
 - Other applicable privacy regulations
 
-Since we don't collect, store, or transmit personal data, Path inherently complies with these regulations by design.
+We collect only anonymous analytics data and do not collect personal identification information. Your study data (notes, progress, preferences) remains stored locally on your device and is never transmitted to our servers.
 
 ---
 
-**Summary**: Path stores everything locally on your device. We don't collect, track, or transmit any information. Your Bible study data is private to you.
+**Summary**: 
+- **Your Study Data**: All notes, progress, highlights, and preferences are stored locally on your device and never transmitted to our servers.
+- **Analytics**: We use Google Firebase Analytics to collect anonymous usage data to improve the app. This data cannot identify you personally.
+- **Advertising**: Path displays Google AdMob ads. You can opt out of personalized ads in your device settings.
+- **No Personal Information**: We do not collect names, emails, phone numbers, or any personal identification information.
 
