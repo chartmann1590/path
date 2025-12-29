@@ -188,10 +188,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - [x] Sharing (share verse, export notes) - ✅ Implemented
 - [x] Home screen widgets (Verse of the Day, Progress, Encouragement) - ✅ Implemented
 - [x] Local backups (export/restore notes, progress, favorites) - ✅ Implemented
+- [x] Text-to-Speech (TTS) - ✅ Implemented with customizable voices
 - [ ] Plan switching (book-based, topic-based, devotional plans)
 - [ ] Encrypted local backups
 - [ ] iOS version
-- [ ] Audio Bible integration
+- [ ] Pre-recorded audio Bible integration (professional narrations)
 
 ---
 
