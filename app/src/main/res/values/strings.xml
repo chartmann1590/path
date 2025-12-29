@@ -1,0 +1,8 @@
+<resources>
+    <string name="app_name">Path</string>
+
+    <!-- Widget Descriptions -->
+    <string name="verse_widget_description">Daily Bible verse to inspire and guide your day</string>
+    <string name="progress_widget_description">Track your daily Bible study streak</string>
+    <string name="encouragement_widget_description">Gentle reminders to spend time with God</string>
+</resources>
