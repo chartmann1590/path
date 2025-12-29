@@ -165,6 +165,7 @@ app/src/main/java/com/path/app/
 - **Local-only storage**: All data (notes, progress, preferences) stored on your device
 - **Optional AI**: AI features connect only to your self-hosted Ollama server
 - **Analytics & Ads**: Uses Google Analytics for app usage insights and displays Google AdMob ads
+  - **Note for developers**: When building from source, you can disable analytics/ads in debug builds by modifying `FirebaseManager.kt` and using test ad unit IDs
 
 See [PRIVACY.md](PRIVACY.md) for detailed privacy information.
 
