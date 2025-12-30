@@ -8,29 +8,50 @@ plugins {
 }
 
 android {
-    namespace = "com.path.app"
+    namespace = "com.biblereadingpath.app"
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.path.app"
+        applicationId = "com.biblereadingpath.app"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 3
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
+        }
+
+        // Enable multidex for release
+        multiDexEnabled = true
+    }
+
+    signingConfigs {
+        create("release") {
+            // Release keystore for Play Store
+            storeFile = file("../keystore/release.keystore")
+            storePassword = "BibleStudy2025!"
+            keyAlias = "bible_study_key"
+            keyPassword = "BibleStudy2025!"
         }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            signingConfig = signingConfigs.getByName("release")
+
+            // Ensure Firebase Analytics is enabled in release
+            buildConfigField("boolean", "ANALYTICS_ENABLED", "true")
+        }
+        debug {
+            buildConfigField("boolean", "ANALYTICS_ENABLED", "false")
         }
     }
     compileOptions {
@@ -42,6 +63,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.4"

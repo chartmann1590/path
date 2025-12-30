@@ -1,0 +1,8 @@
+# NEVER commit keystore files to version control
+*.keystore
+*.jks
+*.p12
+
+# Only commit the info file (with passwords removed if sharing publicly)
+!KEYSTORE_INFO.txt
+!.gitignore
