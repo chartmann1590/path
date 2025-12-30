@@ -66,6 +66,10 @@ captures/
 # Contains sensitive API keys - should not be committed
 google-services.json
 app/google-services.json
+firebase.json
+
+# App ads configuration
+app-ads.txt
 
 # Freeline
 freeline.py
