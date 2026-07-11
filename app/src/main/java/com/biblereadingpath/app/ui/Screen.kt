@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.ui
+﻿package com.biblereadingpath.app.ui
 
 sealed class Screen(val route: String) {
     object Onboarding : Screen("onboarding")
@@ -16,7 +16,10 @@ sealed class Screen(val route: String) {
     object About : Screen("about")
     object Rewards : Screen("rewards")
     object Library : Screen("library")
+    object Achievements : Screen("achievements")
+    object StudyPlans : Screen("studyplans")
     object Quiz : Screen("quiz/{book}/{chapter}") {
         fun createRoute(book: String, chapter: Int) = "quiz/$book/$chapter"
     }
+    object Feedback : Screen("feedback")
 }

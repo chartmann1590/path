@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.ui.screens
+﻿package com.biblereadingpath.app.ui.screens
 
 import android.Manifest
 import android.os.Build
@@ -30,13 +30,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.biblereadingpath.app.data.BibleTranslations
+import com.biblereadingpath.app.ui.theme.ReaderTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateToAbout: () -> Unit = {},
-    onNavigateToOnboarding: () -> Unit = {}
+    onNavigateToOnboarding: () -> Unit = {},
+    onNavigateToFeedback: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val aiEnabled by viewModel.aiEnabled.collectAsState()
@@ -58,6 +60,7 @@ fun SettingsScreen(
     val restoreStatus by viewModel.restoreStatus.collectAsState()
 
     val currentTranslation by viewModel.currentTranslation.collectAsState()
+    val readerTheme by viewModel.readerTheme.collectAsState()
 
     var showPermissionDialog by remember { mutableStateOf(false) }
     var showBackupInstructions by remember { mutableStateOf(false) }
@@ -117,21 +120,21 @@ fun SettingsScreen(
             title = { Text("Backup & Restore Instructions") },
             text = {
                 Column(modifier = Modifier.verticalScroll(androidx.compose.foundation.rememberScrollState())) {
-                    Text("📤 Create Backup:", fontWeight = FontWeight.Bold)
-                    Text("• Tap 'Create Backup' below")
-                    Text("• Choose where to save the file")
-                    Text("• Your progress, notes, favorites, and streak will be saved")
+                    Text("ðŸ“¤ Create Backup:", fontWeight = FontWeight.Bold)
+                    Text("â€¢ Tap 'Create Backup' below")
+                    Text("â€¢ Choose where to save the file")
+                    Text("â€¢ Your progress, notes, favorites, and streak will be saved")
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("📥 Restore Backup:", fontWeight = FontWeight.Bold)
-                    Text("• Tap 'Restore Backup' below")
-                    Text("• Select your backup file (path_backup_*.json)")
-                    Text("• Your data will be imported")
+                    Text("ðŸ“¥ Restore Backup:", fontWeight = FontWeight.Bold)
+                    Text("â€¢ Tap 'Restore Backup' below")
+                    Text("â€¢ Select your backup file (path_backup_*.json)")
+                    Text("â€¢ Your data will be imported")
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text("💡 Tips:", fontWeight = FontWeight.Bold)
-                    Text("• Save backup files to cloud storage (Google Drive, Dropbox)")
-                    Text("• Create backups regularly")
-                    Text("• Transfer files to new devices before restoring")
-                    Text("• Restoring will merge with existing data, not replace it")
+                    Text("ðŸ’¡ Tips:", fontWeight = FontWeight.Bold)
+                    Text("â€¢ Save backup files to cloud storage (Google Drive, Dropbox)")
+                    Text("â€¢ Create backups regularly")
+                    Text("â€¢ Transfer files to new devices before restoring")
+                    Text("â€¢ Restoring will merge with existing data, not replace it")
                 }
             },
             confirmButton = {
@@ -523,6 +526,54 @@ fun SettingsScreen(
             }
         }
 
+
+
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        Text(
+            text = "Reader Theme",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Text(
+            text = "Choose the reading background that is most comfortable",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            ReaderTheme.entries.forEach { theme ->
+                OutlinedCard(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { viewModel.setReaderTheme(theme.name) },
+                    colors = CardDefaults.cardColors(
+                        containerColor = theme.backgroundColor
+                    )
+                ) {
+                    Column(
+                        modifier = Modifier.padding(8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = theme.displayName,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = theme.textColor,
+                            fontWeight = if (readerTheme.equals(theme.name, ignoreCase = true)) FontWeight.Bold else FontWeight.Normal
+                        )
+                    }
+                }
+            }
+        }
+
+
         Divider(modifier = Modifier.padding(vertical = 16.dp))
 
         ListItem(
@@ -543,5 +594,16 @@ fun SettingsScreen(
                 onNavigateToAbout()
             }
         )
+
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        ListItem(
+            headlineContent = { Text("Support & Feedback") },
+            supportingContent = { Text("Report a problem or send feedback to developers") },
+            modifier = Modifier.clickable {
+                onNavigateToFeedback()
+            }
+        )
     }
 }
+

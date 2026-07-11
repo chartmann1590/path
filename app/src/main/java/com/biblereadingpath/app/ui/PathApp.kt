@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.ui
+﻿package com.biblereadingpath.app.ui
 
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.WindowInsets
@@ -30,11 +30,18 @@ import com.biblereadingpath.app.analytics.FirebaseManager
 import com.biblereadingpath.app.data.local.PathDatabase
 import com.biblereadingpath.app.data.preferences.UserPreferences
 import com.biblereadingpath.app.data.repository.BibleRepository
+import com.biblereadingpath.app.data.repository.AchievementRepository
 import com.biblereadingpath.app.data.repository.OllamaRepository
 import com.biblereadingpath.app.data.repository.PathRepository
+import com.biblereadingpath.app.data.repository.StudyPlanRepository
+import com.biblereadingpath.app.data.repository.AchievementDefinition
+import com.biblereadingpath.app.ui.components.AchievementPopup
 import com.biblereadingpath.app.ui.components.AdMobBanner
 import com.biblereadingpath.app.ui.components.AdMobInterstitialManager
 import com.biblereadingpath.app.ui.screens.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Column
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -63,8 +70,12 @@ fun PathApp(
     }
     val userPreferences = remember { UserPreferences(context) }
     val bibleRepository = remember { BibleRepository(context, db.bibleDao(), userPreferences) }
-    val pathRepository = remember { PathRepository(db.noteDao(), db.progressDao(), db.favoriteDao(), db.quizDao(), userPreferences) }
+    val studyPlanRepository = remember { StudyPlanRepository(userPreferences) }
+    val pathRepository = remember { PathRepository(db.noteDao(), db.progressDao(), db.favoriteDao(), db.quizDao(), userPreferences, studyPlanRepository, db.highlightDao(), db.collectionDao()) }
+    val achievementRepository = remember { AchievementRepository(db.achievementDao(), db.progressDao(), db.noteDao(), db.favoriteDao(), db.quizDao()) }
     val firebaseManager = remember { FirebaseManager(context) }
+
+    val latestAchievement = remember { MutableStateFlow<AchievementDefinition?>(null) }
 
     // Check onboarding status
     val onboardingCompleted by userPreferences.onboardingCompleted.collectAsState(initial = false)
@@ -98,7 +109,8 @@ fun PathApp(
                 currentRoute != Screen.Downloads.route &&
                 currentRoute != Screen.Streak.route &&
                 currentRoute != Screen.Roadmap.route &&
-                currentRoute != Screen.About.route) {
+                currentRoute != Screen.About.route &&
+                currentRoute != Screen.StudyPlans.route) {
                 Column {
                     // Add padding to ensure ad is above system navigation bar
                     AdMobBanner(
@@ -111,7 +123,6 @@ fun PathApp(
                             selected = currentRoute == Screen.Home.route,
                             onClick = { 
                                 navController.navigate(Screen.Home.route)
-                                // Try to show ad on navigation
                                 interstitialAdManager?.tryShowAd()
                             }
                         )
@@ -121,6 +132,15 @@ fun PathApp(
                             selected = currentRoute == Screen.Search.route,
                             onClick = { 
                                 navController.navigate(Screen.Search.route)
+                                interstitialAdManager?.tryShowAd()
+                            }
+                        )
+                        NavigationBarItem(
+                            icon = { Icon(Icons.Default.Map, contentDescription = null) },
+                            label = { Text("Plans") },
+                            selected = currentRoute == Screen.StudyPlans.route,
+                            onClick = {
+                                navController.navigate(Screen.StudyPlans.route)
                                 interstitialAdManager?.tryShowAd()
                             }
                         )
@@ -165,7 +185,11 @@ fun PathApp(
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(padding)
+            modifier = Modifier.padding(padding),
+            enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300)) },
+            exitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.Start, animationSpec = tween(300)) },
+            popEnterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300)) },
+            popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, animationSpec = tween(300)) }
         ) {
             composable(Screen.Onboarding.route) {
                 OnboardingScreen(
@@ -179,7 +203,7 @@ fun PathApp(
             }
             composable(Screen.Home.route) {
                 HomeScreen(
-                    viewModel = remember { HomeViewModel(userPreferences, pathRepository, bibleRepository) },
+                    viewModel = remember { HomeViewModel(userPreferences, pathRepository, bibleRepository, studyPlanRepository) },
                     userPreferences = userPreferences,
                     onStartStudy = { book, chapter ->
                         navController.navigate(Screen.Reader.createRoute(book, chapter))
@@ -192,7 +216,14 @@ fun PathApp(
                     },
                     onNavigateToLibrary = {
                         navController.navigate(Screen.Library.route)
-                    }
+                    },
+                    onNavigateToAchievements = {
+                        navController.navigate(Screen.Achievements.route)
+                    },
+                    onNavigateToStudyPlans = {
+                        navController.navigate(Screen.StudyPlans.route)
+                    },
+                    achievementRepository = achievementRepository
                 )
             }
             composable(
@@ -210,6 +241,7 @@ fun PathApp(
                     viewModel = remember { ReaderViewModel(bibleRepository, pathRepository, userPreferences, firebaseManager, context) },
                     userPreferences = userPreferences,
                     onBack = { navController.popBackStack() },
+                    achievementRepository = achievementRepository,
                     onNextChapter = { nextBook, nextChapter ->
                         navController.navigate(Screen.Reader.createRoute(nextBook, nextChapter)) {
                             popUpTo(Screen.Reader.route) { inclusive = true }
@@ -250,7 +282,16 @@ fun PathApp(
                         navController.navigate(Screen.Onboarding.route) {
                             popUpTo(Screen.Home.route) { inclusive = false }
                         }
+                    },
+                    onNavigateToFeedback = {
+                        navController.navigate(Screen.Feedback.route)
                     }
+                )
+            }
+            composable(Screen.Feedback.route) {
+                FeedbackScreen(
+                    viewModel = remember { FeedbackViewModel(context) },
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Search.route) {
@@ -306,6 +347,19 @@ fun PathApp(
                     }
                 )
             }
+            composable(Screen.Achievements.route) {
+                AchievementsScreen(
+                    viewModel = remember { AchievementsViewModel(achievementRepository) },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(Screen.StudyPlans.route) {
+                StudyPlansScreen(
+                    viewModel = remember { StudyPlansViewModel(studyPlanRepository, pathRepository) },
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+
             composable(
                 route = Screen.Quiz.route,
                 arguments = listOf(
@@ -335,3 +389,4 @@ fun PathApp(
         }
     }
 }
+

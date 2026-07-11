@@ -1,3 +1,6 @@
+﻿import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -5,6 +8,12 @@ plugins {
     id("com.google.gms.google-services")
     id("com.google.firebase.crashlytics")
     id("com.google.firebase.firebase-perf")
+}
+
+val localProperties = Properties()
+val localPropertiesFile = rootProject.file("local.properties")
+if (localPropertiesFile.exists()) {
+    localProperties.load(FileInputStream(localPropertiesFile))
 }
 
 android {
@@ -25,6 +34,15 @@ android {
 
         // Enable multidex for release
         multiDexEnabled = true
+
+        val githubToken = localProperties.getProperty("github.api.token") ?: System.getenv("GH_API_TOKEN") ?: ""
+        val githubOwner = localProperties.getProperty("github.repo.owner") ?: System.getenv("GH_REPO_OWNER") ?: ""
+        val githubRepo = localProperties.getProperty("github.repo.name") ?: System.getenv("GH_REPO_NAME") ?: ""
+
+        buildConfigField("String", "GITHUB_API_TOKEN", "\"$githubToken\"")
+        buildConfigField("String", "GITHUB_REPO_OWNER", "\"$githubOwner\"")
+        buildConfigField("String", "GITHUB_REPO_NAME", "\"$githubRepo\"")
+        buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
     }
 
     signingConfigs {
@@ -108,8 +126,14 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
 
+    // OkHttp logging
+    implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
     // Gson for backup/restore
     implementation("com.google.code.gson:gson:2.10.1")
+
+    // Lottie for animations
+    implementation("com.airbnb.android:lottie-compose:6.1.0")
 
     // WorkManager for notifications
     implementation("androidx.work:work-runtime-ktx:2.9.0")
