@@ -16,6 +16,17 @@ if (localPropertiesFile.exists()) {
     localProperties.load(FileInputStream(localPropertiesFile))
 }
 
+fun propertyOrEnv(propertyName: String, envName: String, defaultValue: String = ""): String =
+    localProperties.getProperty(propertyName) ?: System.getenv(envName) ?: defaultValue
+
+fun buildConfigString(value: String): String =
+    "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
+
+val releaseStoreFilePath = propertyOrEnv("release.store.file", "RELEASE_STORE_FILE", "keystore/release.keystore")
+val releaseStorePassword = propertyOrEnv("release.store.password", "RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = propertyOrEnv("release.key.alias", "RELEASE_KEY_ALIAS")
+val releaseKeyPassword = propertyOrEnv("release.key.password", "RELEASE_KEY_PASSWORD")
+
 android {
     namespace = "com.biblereadingpath.app"
     compileSdk = 35
@@ -35,23 +46,30 @@ android {
         // Enable multidex for release
         multiDexEnabled = true
 
-        val githubToken = localProperties.getProperty("github.api.token") ?: System.getenv("GH_API_TOKEN") ?: ""
-        val githubOwner = localProperties.getProperty("github.repo.owner") ?: System.getenv("GH_REPO_OWNER") ?: ""
-        val githubRepo = localProperties.getProperty("github.repo.name") ?: System.getenv("GH_REPO_NAME") ?: ""
+        val githubToken = propertyOrEnv("github.api.token", "GH_API_TOKEN")
+        val githubOwner = propertyOrEnv("github.repo.owner", "GH_REPO_OWNER")
+        val githubRepo = propertyOrEnv("github.repo.name", "GH_REPO_NAME")
+        val admobApplicationId = propertyOrEnv("admob.application.id", "ADMOB_APPLICATION_ID")
+        val admobBannerAdUnitId = propertyOrEnv("admob.banner.ad.unit.id", "ADMOB_BANNER_AD_UNIT_ID")
+        val admobInterstitialAdUnitId = propertyOrEnv("admob.interstitial.ad.unit.id", "ADMOB_INTERSTITIAL_AD_UNIT_ID")
+        val admobRewardedAdUnitId = propertyOrEnv("admob.rewarded.ad.unit.id", "ADMOB_REWARDED_AD_UNIT_ID")
 
-        buildConfigField("String", "GITHUB_API_TOKEN", "\"$githubToken\"")
-        buildConfigField("String", "GITHUB_REPO_OWNER", "\"$githubOwner\"")
-        buildConfigField("String", "GITHUB_REPO_NAME", "\"$githubRepo\"")
+        manifestPlaceholders["admobApplicationId"] = admobApplicationId
+        buildConfigField("String", "GITHUB_API_TOKEN", buildConfigString(githubToken))
+        buildConfigField("String", "GITHUB_REPO_OWNER", buildConfigString(githubOwner))
+        buildConfigField("String", "GITHUB_REPO_NAME", buildConfigString(githubRepo))
         buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
+        buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", buildConfigString(admobBannerAdUnitId))
+        buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", buildConfigString(admobInterstitialAdUnitId))
+        buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", buildConfigString(admobRewardedAdUnitId))
     }
 
     signingConfigs {
         create("release") {
-            // Release keystore for Play Store
-            storeFile = file("../keystore/release.keystore")
-            storePassword = "BibleStudy2025!"
-            keyAlias = "bible_study_key"
-            keyPassword = "BibleStudy2025!"
+            storeFile = rootProject.file(releaseStoreFilePath)
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
 

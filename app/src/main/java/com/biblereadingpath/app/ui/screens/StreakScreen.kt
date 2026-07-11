@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.ui.screens
+﻿package com.biblereadingpath.app.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,6 +28,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.biblereadingpath.app.ui.components.TranslationIndicator
 import com.biblereadingpath.app.ui.screens.QuizHistoryItem
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.LinearEasing
+import com.biblereadingpath.app.ui.theme.StreakGradientStart
+import com.biblereadingpath.app.ui.theme.StreakGradientEnd
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -119,14 +127,25 @@ fun StreakScreen(
                         containerColor = Color.Transparent
                     )
                 ) {
+                    val infiniteTransition = rememberInfiniteTransition(label = "streakPulse")
+                    val glowAlpha by infiniteTransition.animateFloat(
+                        initialValue = 0.8f,
+                        targetValue = 1f,
+                        animationSpec = infiniteRepeatable(
+                            animation = tween(2000, easing = LinearEasing),
+                            repeatMode = RepeatMode.Reverse
+                        ),
+                        label = "streakGlow"
+                    )
+
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
                                 brush = Brush.verticalGradient(
                                     colors = listOf(
-                                        Color(0xFFFF6F00),
-                                        Color(0xFFFFA726)
+                                        StreakGradientStart.copy(alpha = glowAlpha),
+                                        StreakGradientEnd.copy(alpha = glowAlpha)
                                     )
                                 )
                             )

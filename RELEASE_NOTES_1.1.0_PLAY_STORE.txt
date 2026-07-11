@@ -1,0 +1,18 @@
+What's New in Version 1.1.0:
+
+✨ New Features
+• Home Screen Widgets - Verse of the Day, Progress, and Encouragement widgets
+• Text-to-Speech - Listen to passages with customizable voices and speed
+• Enhanced Sharing - Share verses and export your notes
+• Local Backups - Export and restore your study data
+
+🔧 Improvements
+• Better progress tracking and UI refinements
+• Performance optimizations
+
+🐛 Bug Fixes
+• Fixed progress tracking and widget updates
+• Various stability improvements
+
+Thank you for using Path!
+

@@ -9,6 +9,7 @@ import android.content.Context
 import com.biblereadingpath.app.analytics.FirebaseManager
 import com.biblereadingpath.app.data.BibleBooks
 import com.biblereadingpath.app.data.local.entity.FavoriteEntity
+import com.biblereadingpath.app.data.local.entity.HighlightEntity
 import com.biblereadingpath.app.data.local.entity.NoteEntity
 import com.biblereadingpath.app.data.local.entity.ProgressEntity
 import com.biblereadingpath.app.data.preferences.UserPreferences
@@ -78,6 +79,9 @@ class ReaderViewModel(
     // Word-by-word highlighting state
     var currentWordPosition by mutableStateOf<CurrentWordPosition?>(null)
         private set
+
+    private val _highlights = MutableStateFlow<Map<String, HighlightEntity>>(emptyMap())
+    val highlights: StateFlow<Map<String, HighlightEntity>> = _highlights.asStateFlow()
 
     // Track the word-to-verse mapping for the current chapter
     private var wordToVerseMap: Map<Int, CurrentWordPosition> = emptyMap()
@@ -189,6 +193,8 @@ class ReaderViewModel(
                 } else {
                     val progress = pathRepository.getProgressForChapter("$book-$chapterNumber")
                     isCompleted = progress?.isCompleted ?: false
+
+                    loadHighlights(book, chapterNumber)
 
                     // Track chapter read in Firebase
                     firebaseManager.logChapterRead(book, chapterNumber)
@@ -320,7 +326,6 @@ class ReaderViewModel(
 
                 if (isFav) {
                     pathRepository.removeFavorite(verseId)
-                    // Track favorite removed in Firebase
                     firebaseManager.logFavoriteRemoved(ch.book, ch.number, verse.number)
                 } else {
                     pathRepository.addFavorite(
@@ -332,10 +337,35 @@ class ReaderViewModel(
                             verseText = verse.text
                         )
                     )
-                    // Track favorite added in Firebase
                     firebaseManager.logFavoriteAdded(ch.book, ch.number, verse.number)
                 }
             }
+        }
+    }
+
+    fun setHighlight(verse: Verse, colorKey: String) {
+        chapter?.let { ch ->
+            viewModelScope.launch {
+                val verseId = "${ch.book}-${ch.number}-${verse.number}"
+                pathRepository.setHighlight(verseId, ch.book, ch.number, verse.number, colorKey)
+                loadHighlights(ch.book, ch.number)
+            }
+        }
+    }
+
+    fun removeHighlight(verse: Verse) {
+        chapter?.let { ch ->
+            viewModelScope.launch {
+                val verseId = "${ch.book}-${ch.number}-${verse.number}"
+                pathRepository.removeHighlight(verseId)
+                loadHighlights(ch.book, ch.number)
+            }
+        }
+    }
+
+    private suspend fun loadHighlights(book: String, chapter: Int) {
+        pathRepository.getHighlightsForChapter(book, chapter).first().let { list ->
+            _highlights.value = list.associateBy { it.verseId }
         }
     }
 }

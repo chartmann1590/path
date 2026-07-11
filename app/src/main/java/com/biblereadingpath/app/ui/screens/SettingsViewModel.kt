@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.ui.screens
+﻿package com.biblereadingpath.app.ui.screens
 
 import android.content.Context
 import android.net.Uri
@@ -77,6 +77,9 @@ class SettingsViewModel(
 
     val currentTranslation: StateFlow<String> = userPreferences.translation
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "web")
+
+    val readerTheme: StateFlow<String> = userPreferences.readerTheme
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "LIGHT")
 
     fun setAiEnabled(enabled: Boolean) {
         viewModelScope.launch {
@@ -203,9 +206,9 @@ class SettingsViewModel(
                         "Cannot reach server at $url\n\n" +
                         "Remote server firewall is blocking port 11434.\n" +
                         "On your server, ensure:\n" +
-                        "• Firewall allows inbound TCP 11434\n" +
-                        "• Ollama running with OLLAMA_HOST=0.0.0.0\n" +
-                        "• Server's external IP is correct"
+                        "â€¢ Firewall allows inbound TCP 11434\n" +
+                        "â€¢ Ollama running with OLLAMA_HOST=0.0.0.0\n" +
+                        "â€¢ Server's external IP is correct"
                     e.message?.contains("timeout") == true ->
                         "Connection timeout to $url\n\nServer may be slow or unreachable."
                     e.message?.contains("refused") == true ->
@@ -379,7 +382,13 @@ class SettingsViewModel(
         }
     }
 
-    fun setTranslation(translationId: String) {
+    fun setReaderTheme(theme: String) {
+        viewModelScope.launch {
+            userPreferences.setReaderTheme(theme)
+        }
+    }
+
+        fun setTranslation(translationId: String) {
         viewModelScope.launch {
             userPreferences.setTranslation(translationId)
             // Track translation change in Firebase
@@ -392,3 +401,4 @@ class SettingsViewModel(
         ttsManager.shutdown()
     }
 }
+

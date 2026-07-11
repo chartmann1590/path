@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.biblereadingpath.app.data.preferences.UserPreferences
 import com.biblereadingpath.app.data.repository.BibleRepository
 import com.biblereadingpath.app.data.repository.PathRepository
+import com.biblereadingpath.app.data.repository.StudyPlanRepository
 import com.biblereadingpath.app.domain.model.Verse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,7 +20,8 @@ import kotlinx.coroutines.launch
 class HomeViewModel(
     private val userPreferences: UserPreferences,
     private val pathRepository: PathRepository,
-    private val bibleRepository: BibleRepository
+    private val bibleRepository: BibleRepository,
+    private val studyPlanRepository: StudyPlanRepository? = null
 ) : ViewModel() {
     val streak: StateFlow<Int> = userPreferences.streak
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
@@ -43,9 +45,13 @@ class HomeViewModel(
     private val _nextChapterError = MutableStateFlow<String?>(null)
     val nextChapterError = _nextChapterError.asStateFlow()
 
+    private val _activePlanName = MutableStateFlow("Sequential")
+    val activePlanName = _activePlanName.asStateFlow()
+
     init {
         loadVerseOfTheDay()
         loadNextChapter()
+        loadPlanName()
         
         // Refresh Verse of the Day when translation changes
         viewModelScope.launch {
@@ -56,6 +62,13 @@ class HomeViewModel(
                     _verseOfTheDay.value = null
                     loadVerseOfTheDay()
                 }
+        }
+
+        viewModelScope.launch {
+            userPreferences.studyPlanType.collectLatest {
+                loadPlanName()
+                loadNextChapter()
+            }
         }
     }
     
@@ -112,6 +125,15 @@ class HomeViewModel(
                 }
             } catch (e: Exception) {
                 _verseOfTheDayError.value = "Failed to load verse of the day: ${e.message}"
+            }
+        }
+    }
+
+    fun loadPlanName() {
+        viewModelScope.launch {
+            if (studyPlanRepository != null) {
+                val plan = studyPlanRepository.getActivePlan()
+                _activePlanName.value = studyPlanRepository.getPlanDisplayName(plan)
             }
         }
     }

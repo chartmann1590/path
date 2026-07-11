@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.biblereadingpath.app.analytics.FirebaseManager
+import com.biblereadingpath.app.data.local.entity.CollectionEntity
 import com.biblereadingpath.app.data.local.entity.FavoriteEntity
 import com.biblereadingpath.app.data.preferences.UserPreferences
 import com.biblereadingpath.app.data.repository.OllamaRepository
@@ -31,6 +32,12 @@ class FavoritesViewModel(
 
     val favorites = pathRepository.getAllFavorites()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val collections = pathRepository.getAllCollections()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    var selectedCollectionId by mutableStateOf<Long?>(null)
+        private set
 
     var aiEnabled by mutableStateOf(false)
         private set
@@ -140,5 +147,43 @@ class FavoritesViewModel(
     fun dismissAiSummary() {
         aiSummary = null
         selectedVerse = null
+    }
+
+    fun selectCollection(collectionId: Long?) {
+        selectedCollectionId = collectionId
+    }
+
+    fun createCollection(name: String) {
+        viewModelScope.launch {
+            pathRepository.createCollection(name)
+        }
+    }
+
+    fun deleteCollection(collectionId: Long) {
+        viewModelScope.launch {
+            pathRepository.deleteCollection(collectionId)
+            if (selectedCollectionId == collectionId) {
+                selectedCollectionId = null
+            }
+        }
+    }
+
+    fun addVerseToCollection(collectionId: Long, verseId: String) {
+        viewModelScope.launch {
+            pathRepository.addVerseToCollection(collectionId, verseId)
+        }
+    }
+
+    fun removeVerseFromCollection(collectionId: Long, verseId: String) {
+        viewModelScope.launch {
+            pathRepository.removeVerseFromCollection(collectionId, verseId)
+        }
+    }
+
+    var showCreateCollectionDialog by mutableStateOf(false)
+        private set
+
+    fun setShowCreateCollection(show: Boolean) {
+        showCreateCollectionDialog = show
     }
 }

@@ -1,6 +1,8 @@
-package com.biblereadingpath.app.ui.screens
+﻿package com.biblereadingpath.app.ui.screens
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -33,6 +35,8 @@ import androidx.compose.ui.unit.size
 
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.MenuBook
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Image
 
 import com.biblereadingpath.app.ui.components.AdMobInterstitialManager
 import com.biblereadingpath.app.data.preferences.UserPreferences
@@ -40,15 +44,34 @@ import com.biblereadingpath.app.ui.components.TutorialOverlay
 import com.biblereadingpath.app.ui.components.TutorialTarget
 import com.biblereadingpath.app.ui.components.TutorialStep
 import com.biblereadingpath.app.ui.components.TranslationIndicator
+import com.biblereadingpath.app.ui.components.AchievementPopup
+import com.biblereadingpath.app.ui.components.CelebrationOverlay
+import com.biblereadingpath.app.ui.components.HighlightColor
+import com.biblereadingpath.app.ui.components.HighlightPicker
+import com.biblereadingpath.app.ui.components.HapticFeedback
+import com.biblereadingpath.app.ui.components.VerseShareCard
+import com.biblereadingpath.app.data.repository.AchievementDefinition
+import com.biblereadingpath.app.data.repository.AchievementRepository
+import com.biblereadingpath.app.ui.theme.ReaderTheme
+import com.biblereadingpath.app.domain.model.Verse
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ReaderScreen(
     book: String,
@@ -59,7 +82,8 @@ fun ReaderScreen(
     onNextChapter: (String, Int) -> Unit,
     onSwitchBook: (String, Int) -> Unit = { _, _ -> },
     onTakeQuiz: (String, Int) -> Unit = { _, _ -> },
-    interstitialAdManager: AdMobInterstitialManager? = null
+    interstitialAdManager: AdMobInterstitialManager? = null,
+    achievementRepository: AchievementRepository? = null
 ) {
     val tutorialCompleted by userPreferences.tutorialCompleted.collectAsState(initial = false)
     var showTutorial by remember { mutableStateOf(false) }
@@ -140,7 +164,25 @@ fun ReaderScreen(
     var noteContent by remember { mutableStateOf("") }
     var showBookSelector by remember { mutableStateOf(false) }
     var showQuizPromptDialog by remember { mutableStateOf(false) }
+    var verseActionVerse by remember { mutableStateOf<Verse?>(null) }
+    val highlights by viewModel.highlights.collectAsState()
     val currentTranslation by viewModel.currentTranslation.collectAsState()
+    val readerThemeName by userPreferences.readerTheme.collectAsState(initial = "LIGHT")
+    val readerTheme = ReaderTheme.fromName(readerThemeName)
+    var showCelebration by remember { mutableStateOf(false) }
+    var achievementPopup by remember { mutableStateOf<AchievementDefinition?>(null) }
+
+    fun triggerAchievementChecks() {
+        if (achievementRepository == null) return
+        CoroutineScope(Dispatchers.Main).launch {
+            val readingAchievements = withContext(Dispatchers.IO) { achievementRepository.checkReadingAchievements() }
+            val streak = userPreferences.streak.first()
+            val streakAchievements = withContext(Dispatchers.IO) { achievementRepository.checkStreakAchievements(streak) }
+            val allNew = readingAchievements + streakAchievements
+            if (allNew.isNotEmpty()) achievementPopup = allNew.first()
+        }
+    }
+    val context = LocalContext.current
     
     // AI State
     val aiExplanation = viewModel.aiExplanation
@@ -185,6 +227,104 @@ fun ReaderScreen(
         )
     }
     
+    // Verse action bottom sheet
+    if (verseActionVerse != null) {
+        val actionVerse = verseActionVerse!!
+        val verseId = "$book-$chapterNumber-${actionVerse.number}"
+        val currentHighlight = highlights[verseId]?.let { HighlightColor.fromKey(it.color) }
+        ModalBottomSheet(
+            onDismissRequest = { verseActionVerse = null }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = "$book $chapterNumber:${actionVerse.number}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                Text(
+                    text = "\"${actionVerse.text.take(120)}${if (actionVerse.text.length > 120) "..." else ""}\"",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+
+                Text(
+                    text = "Highlight",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+                HighlightPicker(
+                    currentColor = currentHighlight?.key,
+                    onColorSelected = { color ->
+                        viewModel.setHighlight(actionVerse, color.key)
+                        verseActionVerse = null
+                        HapticFeedback.lightClick(context)
+                    },
+                    onRemoveHighlight = {
+                        viewModel.removeHighlight(actionVerse)
+                        verseActionVerse = null
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(8.dp))
+
+                ListItem(
+                    headlineContent = { Text("Add Note") },
+                    leadingContent = { Icon(Icons.Default.Star, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
+                    modifier = Modifier.clickable {
+                        showNoteDialog = actionVerse.number
+                        verseActionVerse = null
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Share as Text") },
+                    leadingContent = { Icon(Icons.Default.Share, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        val shareText = "\"${actionVerse.text}\" - $book $chapterNumber:${actionVerse.number}"
+                        val sendIntent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                            type = "text/plain"
+                        }
+                        context.startActivity(Intent.createChooser(sendIntent, "Share verse"))
+                        verseActionVerse = null
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Share as Image") },
+                    leadingContent = { Icon(Icons.Default.Image, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        VerseShareCard.saveAndShare(
+                            context,
+                            actionVerse.text,
+                            "$book $chapterNumber:${actionVerse.number}"
+                        )
+                        verseActionVerse = null
+                    }
+                )
+                ListItem(
+                    headlineContent = { Text("Copy Verse") },
+                    leadingContent = { Icon(Icons.Default.ArrowForward, contentDescription = null) },
+                    modifier = Modifier.clickable {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clip = android.content.ClipData.newPlainText("Verse", "\"${actionVerse.text}\" - $book $chapterNumber:${actionVerse.number}")
+                        clipboard.setPrimaryClip(clip)
+                        verseActionVerse = null
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+
     if (aiExplanation != null) {
         AlertDialog(
             onDismissRequest = { viewModel.clearAiExplanation() },
@@ -329,6 +469,10 @@ fun ReaderScreen(
         )
     }
 
+    CelebrationOverlay(isVisible = showCelebration) {
+        showCelebration = false
+    }
+
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -390,7 +534,9 @@ fun ReaderScreen(
                                 showQuizPromptDialog = true
                             } else {
                                 viewModel.markAsCompleted()
-                                // Try to show ad after marking chapter as complete
+                                showCelebration = true
+                                HapticFeedback.success(context)
+                                triggerAchievementChecks()
                                 interstitialAdManager?.tryShowAd()
                                 onBack()
                             }
@@ -408,6 +554,7 @@ fun ReaderScreen(
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
+                    .background(readerTheme.backgroundColor)
                     .padding(padding)
                     .padding(horizontal = 16.dp)
             ) {
@@ -421,6 +568,8 @@ fun ReaderScreen(
                 }
                 items(chapter.verses) { verse ->
                     var isFavorite by remember { mutableStateOf(false) }
+                    val verseId = "$book-$chapterNumber-${verse.number}"
+                    val highlightColor = highlights[verseId]?.let { HighlightColor.fromKey(it.color)?.color }
 
                     LaunchedEffect(verse) {
                         isFavorite = viewModel.isVerseFavorite(verse)
@@ -437,20 +586,29 @@ fun ReaderScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 8.dp)
+                                .then(
+                                    if (highlightColor != null) Modifier
+                                        .background(highlightColor.copy(alpha = 0.3f), RoundedCornerShape(4.dp))
+                                        .padding(horizontal = 4.dp)
+                                    else Modifier
+                                ),
                             horizontalArrangement = Arrangement.SpaceBetween
                         ) {
                             Row(
                                 modifier = Modifier
                                     .weight(1f)
-                                    .clickable { showNoteDialog = verse.number }
-                                    .semantics { contentDescription = "Verse ${verse.number}: ${verse.text.take(50)}${if (verse.text.length > 50) "..." else ""}. Tap to add note" }
+                                    .combinedClickable(
+                                        onClick = { showNoteDialog = verse.number },
+                                        onLongClick = { verseActionVerse = verse }
+                                    )
+                                    .semantics { contentDescription = "Verse ${verse.number}: ${verse.text.take(50)}${if (verse.text.length > 50) "..." else ""}. Tap to add note, long press for more options" }
                             ) {
                             Text(
                                 text = "${verse.number} ",
                                 style = MaterialTheme.typography.bodySmall,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.primary,
+                                color = readerTheme.verseNumberColor,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                             
@@ -492,7 +650,7 @@ fun ReaderScreen(
                             
                             Text(
                                 text = annotatedText,
-                                style = MaterialTheme.typography.bodyLarge,
+                                style = MaterialTheme.typography.bodyLarge.copy(color = readerTheme.textColor),
                                 lineHeight = 28.sp
                             )
                         }
@@ -504,19 +662,41 @@ fun ReaderScreen(
                                 }
                             }
                         ) {
-                            IconButton(
-                                onClick = {
-                                    viewModel.toggleFavorite(verse)
-                                    isFavorite = !isFavorite
-                                },
-                                modifier = Modifier.size(32.dp)
-                            ) {
-                                Icon(
-                                    imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
-                                    contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
-                                    tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                            Row(modifier = Modifier.size(64.dp)) {
+                                IconButton(
+                                    onClick = {
+                                        val shareText = "\"${verse.text}\" - $book ${chapterNumber}:${verse.number}"
+                                        val sendIntent = Intent().apply {
+                                            action = Intent.ACTION_SEND
+                                            putExtra(Intent.EXTRA_TEXT, shareText)
+                                            type = "text/plain"
+                                        }
+                                        context.startActivity(Intent.createChooser(sendIntent, "Share verse"))
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        Icons.Default.Share,
+                                        contentDescription = "Share verse",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = {
+                                        viewModel.toggleFavorite(verse)
+                                        isFavorite = !isFavorite
+                                        HapticFeedback.lightClick(context)
+                                    },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isFavorite) Icons.Filled.Star else Icons.Outlined.StarBorder,
+                                        contentDescription = if (isFavorite) "Remove from favorites" else "Add to favorites",
+                                        tint = if (isFavorite) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -527,7 +707,9 @@ fun ReaderScreen(
                     Button(
                         onClick = { 
                             viewModel.markAsCompleted()
-                            // Try to show ad after completing chapter
+                            showCelebration = true
+                            HapticFeedback.success(context)
+                            triggerAchievementChecks()
                             interstitialAdManager?.tryShowAd()
                             onNextChapter(book, chapterNumber + 1) 
                         },
@@ -597,5 +779,14 @@ fun ReaderScreen(
                 targetCoordinates = targetCoordinates
             )
         }
+
+        // Achievement popup
+        AchievementPopup(
+            achievement = achievementPopup,
+            onDismiss = { achievementPopup = null }
+        )
     }
 }
+
+
+

@@ -1,4 +1,4 @@
-package com.biblereadingpath.app.data.preferences
+﻿package com.biblereadingpath.app.data.preferences
 
 import android.content.Context
 import androidx.datastore.preferences.core.*
@@ -46,6 +46,10 @@ class UserPreferences(private val context: Context) {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val TUTORIAL_COMPLETED = booleanPreferencesKey("tutorial_completed")
         val HOME_TUTORIAL_SHOWN = booleanPreferencesKey("home_tutorial_shown")
+        val READER_THEME = stringPreferencesKey("reader_theme")
+
+        val STUDY_PLAN_TYPE = stringPreferencesKey("study_plan_type")
+        val STUDY_PLAN_ID = stringPreferencesKey("study_plan_id")
     }
 
     val translation: Flow<String> = context.dataStore.data.map { it[BIBLE_TRANSLATION] ?: "web" }
@@ -71,6 +75,8 @@ class UserPreferences(private val context: Context) {
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data.map { it[ONBOARDING_COMPLETED] ?: false }
     val tutorialCompleted: Flow<Boolean> = context.dataStore.data.map { it[TUTORIAL_COMPLETED] ?: false }
     val homeTutorialShown: Flow<Boolean> = context.dataStore.data.map { it[HOME_TUTORIAL_SHOWN] ?: false }
+
+    val readerTheme: Flow<String> = context.dataStore.data.map { it[READER_THEME] ?: "LIGHT" }
 
     suspend fun updateStreak(newStreak: Int) {
         context.dataStore.edit { it[STREAK_COUNT] = newStreak }
@@ -183,7 +189,22 @@ class UserPreferences(private val context: Context) {
         context.dataStore.edit { it[HOME_TUTORIAL_SHOWN] = shown }
     }
 
-    suspend fun setTranslation(translation: String) {
+    val studyPlanType: Flow<String> = context.dataStore.data.map { it[STUDY_PLAN_TYPE] ?: "sequential" }
+    val studyPlanId: Flow<String?> = context.dataStore.data.map { it[STUDY_PLAN_ID] }
+
+    suspend fun setStudyPlan(typeKey: String, id: String? = null) {
+        context.dataStore.edit {
+            it[STUDY_PLAN_TYPE] = typeKey
+            if (id != null) it[STUDY_PLAN_ID] = id else it.remove(STUDY_PLAN_ID)
+        }
+    }
+
+    suspend fun setReaderTheme(theme: String) {
+        context.dataStore.edit { it[READER_THEME] = theme }
+    }
+
+        suspend fun setTranslation(translation: String) {
         context.dataStore.edit { it[BIBLE_TRANSLATION] = translation.lowercase() }
     }
 }
+

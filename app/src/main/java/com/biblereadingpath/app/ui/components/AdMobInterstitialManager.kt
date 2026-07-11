@@ -2,6 +2,7 @@ package com.biblereadingpath.app.ui.components
 
 import android.app.Activity
 import android.util.Log
+import com.biblereadingpath.app.BuildConfig
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.FullScreenContentCallback
@@ -28,7 +29,7 @@ import kotlin.random.Random
  */
 class AdMobInterstitialManager(
     private val activity: Activity,
-    private val adUnitId: String = "ca-app-pub-8382831211800454/8304718545",
+    private val adUnitId: String = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID,
     private val triggerProbability: Float = 0.30f, // 30% chance by default
     private val userPreferences: UserPreferences? = null
 ) {
@@ -153,4 +154,3 @@ class AdMobInterstitialManager(
         // Note: This won't affect the current instance, but you can recreate the manager if needed
     }
 }
-

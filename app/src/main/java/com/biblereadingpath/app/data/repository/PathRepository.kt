@@ -1,10 +1,15 @@
 package com.biblereadingpath.app.data.repository
 
 import com.biblereadingpath.app.data.local.dao.FavoriteDao
+import com.biblereadingpath.app.data.local.dao.HighlightDao
+import com.biblereadingpath.app.data.local.dao.CollectionDao
 import com.biblereadingpath.app.data.local.dao.NoteDao
 import com.biblereadingpath.app.data.local.dao.ProgressDao
 import com.biblereadingpath.app.data.local.dao.QuizDao
+import com.biblereadingpath.app.data.local.entity.CollectionEntity
+import com.biblereadingpath.app.data.local.entity.CollectionMemberEntity
 import com.biblereadingpath.app.data.local.entity.FavoriteEntity
+import com.biblereadingpath.app.data.local.entity.HighlightEntity
 import com.biblereadingpath.app.data.local.entity.NoteEntity
 import com.biblereadingpath.app.data.local.entity.ProgressEntity
 import com.biblereadingpath.app.data.local.entity.QuizEntity
@@ -16,7 +21,10 @@ class PathRepository(
     private val progressDao: ProgressDao,
     private val favoriteDao: FavoriteDao,
     private val quizDao: QuizDao,
-    private val userPreferences: com.biblereadingpath.app.data.preferences.UserPreferences
+    private val userPreferences: com.biblereadingpath.app.data.preferences.UserPreferences,
+    private val studyPlanRepository: StudyPlanRepository? = null,
+    private val highlightDao: HighlightDao? = null,
+    private val collectionDao: CollectionDao? = null
 ) {
     fun getNotesForChapter(book: String, chapter: Int): Flow<List<NoteEntity>> =
         noteDao.getNotesForChapter(book, chapter)
@@ -44,28 +52,33 @@ class PathRepository(
     )
 
     suspend fun getNextChapter(): Pair<String, Int> {
-        // Optimization: Start from stored current position instead of Genesis 1
-        val storedBook = userPreferences.currentBook.first()
-        val storedChapter = userPreferences.currentChapter.first()
-        
-        // Get all progress first
         val allProgress = progressDao.getAllProgress().first()
         val progressMap = allProgress.associateBy { it.chapterId }
+        val completedIds = allProgress.filter { it.isCompleted }.map { it.chapterId }.toSet()
 
-        // Find starting point: if we have a stored position, start from there
+        if (studyPlanRepository != null) {
+            val plan = studyPlanRepository.getActivePlan()
+            if (plan !is com.biblereadingpath.app.data.studyplan.StudyPlan.Sequential) {
+                val planNext = studyPlanRepository.getNextChapterForPlan(plan, completedIds)
+                if (planNext != null) return planNext
+            }
+        }
+
+        val storedBook = userPreferences.currentBook.first()
+        val storedChapter = userPreferences.currentChapter.first()
+
         val startBookIndex = if (storedBook != null && storedBook in bibleBooks) {
             bibleBooks.indexOf(storedBook)
         } else {
-            0 // Start from beginning
+            0
         }
-        
+
         val startChapter = if (storedBook != null && storedChapter > 0) {
             storedChapter
         } else {
             1
         }
 
-        // Iterate from stored position (or start)
         for (bookIndex in startBookIndex until bibleBooks.size) {
             val book = bibleBooks[bookIndex]
             val maxChapters = if (book == "Psalms") 150 else 50
@@ -78,8 +91,7 @@ class PathRepository(
                  }
             }
         }
-        
-        // If we started from a stored position and found nothing, check from beginning
+
         if (storedBook != null) {
             for (book in bibleBooks) {
                 val maxChapters = if (book == "Psalms") 150 else 50
@@ -91,8 +103,8 @@ class PathRepository(
                 }
             }
         }
-        
-        return Pair("Genesis", 1) // Default or finished
+
+        return Pair("Genesis", 1)
     }
 
     // Favorites
@@ -112,4 +124,47 @@ class PathRepository(
     fun getAllQuizzes(): Flow<List<QuizEntity>> = quizDao.getAllQuizzes()
 
     suspend fun getQuizStatsForChapter(chapterId: String) = quizDao.getQuizStatsForChapter(chapterId)
+
+    // Highlights
+    fun getHighlightsForChapter(book: String, chapter: Int): Flow<List<HighlightEntity>> =
+        highlightDao?.getHighlightsForChapter(book, chapter) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    fun getAllHighlights(): Flow<List<HighlightEntity>> =
+        highlightDao?.getAllHighlights() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    suspend fun setHighlight(verseId: String, bookName: String, chapter: Int, verseNumber: Int, color: String) {
+        highlightDao?.insertHighlight(HighlightEntity(verseId, bookName, chapter, verseNumber, color))
+    }
+
+    suspend fun removeHighlight(verseId: String) {
+        highlightDao?.deleteHighlight(verseId)
+    }
+
+    suspend fun getHighlight(verseId: String): HighlightEntity? = highlightDao?.getHighlight(verseId)
+
+    // Collections
+    fun getAllCollections(): Flow<List<CollectionEntity>> =
+        collectionDao?.getAllCollections() ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    suspend fun createCollection(name: String): Long {
+        return collectionDao?.insertCollection(CollectionEntity(name = name)) ?: -1L
+    }
+
+    suspend fun deleteCollection(id: Long) {
+        collectionDao?.deleteCollectionById(id)
+    }
+
+    suspend fun addVerseToCollection(collectionId: Long, verseId: String) {
+        collectionDao?.addVerseToCollection(CollectionMemberEntity(collectionId = collectionId, verseId = verseId))
+    }
+
+    suspend fun removeVerseFromCollection(collectionId: Long, verseId: String) {
+        collectionDao?.removeVerseFromCollection(collectionId, verseId)
+    }
+
+    fun getMembersForCollection(collectionId: Long): Flow<List<CollectionMemberEntity>> =
+        collectionDao?.getMembersForCollection(collectionId) ?: kotlinx.coroutines.flow.flowOf(emptyList())
+
+    fun getCollectionsForVerse(verseId: String): Flow<List<CollectionMemberEntity>> =
+        collectionDao?.getCollectionsForVerse(verseId) ?: kotlinx.coroutines.flow.flowOf(emptyList())
 }

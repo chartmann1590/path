@@ -12,7 +12,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
@@ -36,7 +38,10 @@ fun FavoritesScreen(
 ) {
     val favorites by viewModel.favorites.collectAsState()
     val currentTranslation by viewModel.currentTranslation.collectAsState()
+    val collections by viewModel.collections.collectAsState()
+    val selectedCollectionId = viewModel.selectedCollectionId
     var showActionSheet by remember { mutableStateOf<FavoriteEntity?>(null) }
+    var newCollectionName by remember { mutableStateOf("") }
 
     // AI Summary Dialog
     if (viewModel.selectedVerse != null) {
@@ -93,6 +98,27 @@ fun FavoritesScreen(
                 )
                 }
 
+                if (collections.isNotEmpty()) {
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                    Text(
+                        text = "Add to Collection",
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                    )
+                    collections.forEach { collection ->
+                        ListItem(
+                            headlineContent = { Text(collection.name) },
+                            leadingContent = {
+                                Icon(Icons.Default.Folder, contentDescription = null)
+                            },
+                            modifier = Modifier.clickable {
+                                viewModel.addVerseToCollection(collection.id, showActionSheet!!.verseId)
+                                showActionSheet = null
+                            }
+                        )
+                    }
+                }
+
                 ListItem(
                     headlineContent = { Text("Remove from Favorites") },
                     leadingContent = {
@@ -111,6 +137,37 @@ fun FavoritesScreen(
         }
     }
 
+    // Create Collection Dialog
+    if (viewModel.showCreateCollectionDialog) {
+        AlertDialog(
+            onDismissRequest = { viewModel.setShowCreateCollection(false) },
+            title = { Text("New Collection") },
+            text = {
+                OutlinedTextField(
+                    value = newCollectionName,
+                    onValueChange = { newCollectionName = it },
+                    label = { Text("Collection name") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newCollectionName.isNotBlank()) {
+                            viewModel.createCollection(newCollectionName)
+                            newCollectionName = ""
+                            viewModel.setShowCreateCollection(false)
+                        }
+                    }
+                ) { Text("Create") }
+            },
+            dismissButton = {
+                TextButton(onClick = { viewModel.setShowCreateCollection(false) }) { Text("Cancel") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -126,6 +183,9 @@ fun FavoritesScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { viewModel.setShowCreateCollection(true) }) {
+                        Icon(Icons.Default.CreateNewFolder, contentDescription = "New Collection")
+                    }
                     TranslationIndicator(
                         translationId = currentTranslation,
                         modifier = Modifier.padding(end = 8.dp)
@@ -134,13 +194,45 @@ fun FavoritesScreen(
             )
         }
     ) { padding ->
-        if (favorites.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // Collection filter tabs
+            if (collections.isNotEmpty()) {
+                ScrollableTabRow(
+                    selectedTabIndex = collections.indexOfFirst { it.id == selectedCollectionId } + 1,
+                    edgePadding = 8.dp,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Tab(
+                        selected = selectedCollectionId == null,
+                        onClick = { viewModel.selectCollection(null) },
+                        text = { Text("All") }
+                    )
+                    collections.forEach { collection ->
+                        Tab(
+                            selected = selectedCollectionId == collection.id,
+                            onClick = { viewModel.selectCollection(collection.id) },
+                            text = { Text(collection.name) }
+                        )
+                    }
+                }
+            }
+
+            val filteredFavorites = if (selectedCollectionId != null) {
+                favorites
+            } else {
+                favorites
+            }
+
+            if (filteredFavorites.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Default.Star,
@@ -162,15 +254,13 @@ fun FavoritesScreen(
                     )
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(favorites, key = { it.verseId }) { favorite ->
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(filteredFavorites, key = { it.verseId }) { favorite ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -218,6 +308,7 @@ fun FavoritesScreen(
                     }
                 }
             }
+        }
         }
     }
 }

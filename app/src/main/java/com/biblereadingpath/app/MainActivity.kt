@@ -45,7 +45,7 @@ class MainActivity : ComponentActivity() {
         // Note: MobileAds.initialize is synchronous, so we can create the manager immediately
         interstitialAdManagerState.value = AdMobInterstitialManager(
             activity = this,
-            adUnitId = "ca-app-pub-8382831211800454/8304718545",
+            adUnitId = BuildConfig.ADMOB_INTERSTITIAL_AD_UNIT_ID,
             triggerProbability = 0.30f, // 30% chance to show ad
             userPreferences = userPreferences
         )
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
         // Initialize rewarded ad manager
         rewardedAdManagerState.value = AdMobRewardedManager(
             activity = this,
-            adUnitId = "ca-app-pub-8382831211800454/2959417745",
+            adUnitId = BuildConfig.ADMOB_REWARDED_AD_UNIT_ID,
             onAdRewarded = { credits ->
                 // Grant credits to user
                 CoroutineScope(Dispatchers.IO).launch {
