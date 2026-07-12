@@ -1,0 +1,173 @@
+name: Publish to Google Play
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_play_publish:
+        description: 'Type "publish" to confirm submission to Google Play production'
+        required: true
+        type: string
+      release_notes:
+        description: 'Release notes (leave blank to auto-generate from commit history)'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: publish-google-play
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish to Google Play
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    env:
+      GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
+      GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
+      GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
+      ADMOB_APPLICATION_ID: ${{ secrets.ADMOB_APPLICATION_ID }}
+      ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
+      ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
+      ADMOB_REWARDED_AD_UNIT_ID: ${{ secrets.ADMOB_REWARDED_AD_UNIT_ID }}
+      RELEASE_STORE_FILE: keystore/release.keystore
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+      GOOGLE_SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON }}
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
+
+    steps:
+      - name: Validate publish confirmation
+        shell: bash
+        run: |
+          if [ "${{ github.event.inputs.confirm_play_publish }}" != "publish" ]; then
+            echo "::error::You must type exactly 'publish' in confirm_play_publish to proceed."
+            echo "Received: '${{ github.event.inputs.confirm_play_publish }}'"
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          missing=()
+          for name in \
+            GH_API_TOKEN \
+            GH_REPO_OWNER \
+            GH_REPO_NAME \
+            ADMOB_APPLICATION_ID \
+            ADMOB_BANNER_AD_UNIT_ID \
+            ADMOB_INTERSTITIAL_AD_UNIT_ID \
+            ADMOB_REWARDED_AD_UNIT_ID \
+            RELEASE_STORE_PASSWORD \
+            RELEASE_KEY_ALIAS \
+            RELEASE_KEY_PASSWORD \
+            GOOGLE_SERVICES_JSON \
+            RELEASE_KEYSTORE_BASE64 \
+            GOOGLE_PLAY_SERVICE_ACCOUNT_JSON
+          do
+            if [ -z "${!name}" ]; then
+              missing+=("$name")
+            fi
+          done
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            printf 'Missing required GitHub secrets:\n'
+            printf ' - %s\n' "${missing[@]}"
+            exit 1
+          fi
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Compute version code and name
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_CODE="$(date -u +'%y%j%H%M')"
+          VERSION_NAME="1.1.0.$(date -u +'%Y%m%d.%H%M')"
+          echo "ANDROID_VERSION_CODE=${VERSION_CODE}" >> "$GITHUB_ENV"
+          echo "ANDROID_VERSION_NAME=${VERSION_NAME}" >> "$GITHUB_ENV"
+          echo "version_code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+          echo "version_name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "Computed version: ${VERSION_NAME} (${VERSION_CODE})"
+
+      - name: Restore release-only files
+        shell: bash
+        run: |
+          mkdir -p app keystore
+          printf '%s' "$GOOGLE_SERVICES_JSON" > app/google-services.json
+          printf '%s' "$RELEASE_KEYSTORE_BASE64" | base64 --decode > keystore/release.keystore
+          chmod +x gradlew
+
+      - name: Run lint
+        run: ./gradlew --no-daemon lintRelease
+
+      - name: Run unit tests
+        run: ./gradlew --no-daemon testReleaseUnitTest
+
+      - name: Build release AAB
+        run: ./gradlew --no-daemon bundleRelease
+
+      - name: Generate release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p distribution/whatsnew
+
+          NOTES="${{ github.event.inputs.release_notes }}"
+          if [ -n "$NOTES" ]; then
+            printf '%s\n' "$NOTES" > distribution/whatsnew/whatsnew-en-US
+            echo "Using provided release notes"
+          else
+            PREV_TAG="$(git tag --sort=-creatordate --list '*release*' | head -n 1)"
+            if [ -n "$PREV_TAG" ]; then
+              echo "Previous release tag: ${PREV_TAG}"
+              git log --format="- %s" "${PREV_TAG}..HEAD" > distribution/whatsnew/whatsnew-en-US || true
+              if [ ! -s distribution/whatsnew/whatsnew-en-US ]; then
+                printf 'Bug fixes and performance improvements.\n' > distribution/whatsnew/whatsnew-en-US
+              fi
+            elif [ -f listing/whats_new.txt ]; then
+              cp listing/whats_new.txt distribution/whatsnew/whatsnew-en-US
+            else
+              printf 'Bug fixes and performance improvements.\n' > distribution/whatsnew/whatsnew-en-US
+            fi
+            echo "Release notes:"
+            cat distribution/whatsnew/whatsnew-en-US
+          fi
+
+      - name: Upload AAB as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bible-study-${{ steps.version.outputs.version_name }}-aab
+          path: app/build/outputs/bundle/release/*.aab
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish to Google Play
+        uses: r0adkll/upload-google-play@v1.1.5
+        with:
+          serviceAccountJson: ${{ secrets.GOOGLE_PLAY_SERVICE_ACCOUNT_JSON }}
+          packageName: com.biblereadingpath.app
+          releaseFiles: app/build/outputs/bundle/release/*.aab
+          track: production
+          status: completed
+          whatsNewDirectory: distribution/whatsnew
+          mappingFile: app/build/outputs/mapping/release/mapping.txt
