@@ -1,5 +1,6 @@
 package com.biblereadingpath.app.ui.screens
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -7,8 +8,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.biblereadingpath.app.data.local.entity.QuizEntity
 import com.biblereadingpath.app.data.preferences.UserPreferences
+import com.biblereadingpath.app.data.repository.AiRepository
 import com.biblereadingpath.app.data.repository.BibleRepository
-import com.biblereadingpath.app.data.repository.OllamaRepository
 import com.biblereadingpath.app.data.repository.PathRepository
 import com.biblereadingpath.app.data.repository.Quiz
 import com.biblereadingpath.app.data.repository.QuizQuestion
@@ -27,13 +28,14 @@ data class QuizState(
 )
 
 class QuizViewModel(
-    private val ollamaRepository: OllamaRepository,
     private val pathRepository: PathRepository,
     private val bibleRepository: BibleRepository,
     private val userPreferences: UserPreferences,
+    context: Context,
     private val book: String,
     private val chapter: Int
 ) : ViewModel() {
+    private val aiRepository = AiRepository(userPreferences, context)
 
     var state by mutableStateOf(QuizState())
         private set
@@ -59,7 +61,7 @@ class QuizViewModel(
                     )
                     return@launch
                 }
-                val quiz = ollamaRepository.generateQuiz(book, chapter, chapterText)
+                val quiz = aiRepository.generateQuiz(book, chapter, chapterText)
                 if (quiz != null) {
                     state = state.copy(
                         quiz = quiz,

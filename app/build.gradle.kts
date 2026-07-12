@@ -49,7 +49,7 @@ android {
         val githubToken = propertyOrEnv("github.api.token", "GH_API_TOKEN")
         val githubOwner = propertyOrEnv("github.repo.owner", "GH_REPO_OWNER")
         val githubRepo = propertyOrEnv("github.repo.name", "GH_REPO_NAME")
-        val admobApplicationId = propertyOrEnv("admob.application.id", "ADMOB_APPLICATION_ID")
+        val admobApplicationId = propertyOrEnv("admob.application.id", "ADMOB_APPLICATION_ID", "ca-app-pub-3940256099942544~3347511713")
         val admobBannerAdUnitId = propertyOrEnv("admob.banner.ad.unit.id", "ADMOB_BANNER_AD_UNIT_ID")
         val admobInterstitialAdUnitId = propertyOrEnv("admob.interstitial.ad.unit.id", "ADMOB_INTERSTITIAL_AD_UNIT_ID")
         val admobRewardedAdUnitId = propertyOrEnv("admob.rewarded.ad.unit.id", "ADMOB_REWARDED_AD_UNIT_ID")
@@ -96,6 +96,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
+        freeCompilerArgs += listOf("-Xskip-metadata-version-check")
     }
     buildFeatures {
         compose = true
@@ -146,6 +147,10 @@ dependencies {
 
     // OkHttp logging
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
+
+    // LiteRT-LM for on-device Gemma 4
+    implementation("com.google.ai.edge.litertlm:litertlm-android:latest.release")
+    implementation("com.google.guava:listenablefuture:9999.0-empty-to-avoid-conflict-with-guava")
 
     // Gson for backup/restore
     implementation("com.google.code.gson:gson:2.10.1")

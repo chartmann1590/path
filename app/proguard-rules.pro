@@ -102,6 +102,10 @@
 # DataStore
 -keep class androidx.datastore.** { *; }
 
+# LiteRT-LM / on-device Gemma 4
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
+
 # Keep app models and data classes
 -keep class com.biblereadingpath.app.** { *; }
 

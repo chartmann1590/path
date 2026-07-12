@@ -20,6 +20,9 @@ class UserPreferences(private val context: Context) {
         val OLLAMA_URL = stringPreferencesKey("ollama_url")
         val OLLAMA_MODEL = stringPreferencesKey("ollama_model")
         val AI_ENABLED = booleanPreferencesKey("ai_enabled")
+        val AI_PROVIDER = stringPreferencesKey("ai_provider")
+        val GEMMA_MODEL = stringPreferencesKey("gemma_model")
+        val GEMMA_MODEL_PATH = stringPreferencesKey("gemma_model_path")
         
         // Verse of the Day Cache for Widgets
         val VOD_TEXT = stringPreferencesKey("vod_text")
@@ -57,8 +60,13 @@ class UserPreferences(private val context: Context) {
     val streak: Flow<Int> = context.dataStore.data.map { it[STREAK_COUNT] ?: 0 }
     val lastStudyDate: Flow<Long> = context.dataStore.data.map { it[LAST_STUDY_DATE] ?: 0L }
     val aiEnabled: Flow<Boolean> = context.dataStore.data.map { it[AI_ENABLED] ?: false }
+    val aiProvider: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[AI_PROVIDER] ?: if (preferences[AI_ENABLED] == true) "OLLAMA" else "OFF"
+    }
     val ollamaUrl: Flow<String?> = context.dataStore.data.map { it[OLLAMA_URL] }
     val ollamaModel: Flow<String?> = context.dataStore.data.map { it[OLLAMA_MODEL] }
+    val gemmaModel: Flow<String> = context.dataStore.data.map { it[GEMMA_MODEL] ?: "E2B" }
+    val gemmaModelPath: Flow<String?> = context.dataStore.data.map { it[GEMMA_MODEL_PATH] }
 
     val vodText: Flow<String?> = context.dataStore.data.map { it[VOD_TEXT] }
     val vodRef: Flow<String?> = context.dataStore.data.map { it[VOD_REF] }
@@ -116,7 +124,31 @@ class UserPreferences(private val context: Context) {
     }
 
     suspend fun setAiEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[AI_ENABLED] = enabled }
+        context.dataStore.edit {
+            it[AI_ENABLED] = enabled
+            it[AI_PROVIDER] = if (enabled) "OLLAMA" else "OFF"
+        }
+    }
+
+    suspend fun setAiProvider(provider: String) {
+        context.dataStore.edit {
+            it[AI_PROVIDER] = provider
+            it[AI_ENABLED] = provider != "OFF"
+        }
+    }
+
+    suspend fun setGemmaModel(model: String) {
+        context.dataStore.edit { it[GEMMA_MODEL] = model }
+    }
+
+    suspend fun setGemmaModelPath(path: String?) {
+        context.dataStore.edit {
+            if (path == null) {
+                it.remove(GEMMA_MODEL_PATH)
+            } else {
+                it[GEMMA_MODEL_PATH] = path
+            }
+        }
     }
     
     suspend fun setOllamaConfig(url: String, model: String) {

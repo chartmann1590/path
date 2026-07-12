@@ -1,13 +1,14 @@
 package com.biblereadingpath.app.ui.screens
 
+import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.biblereadingpath.app.data.preferences.UserPreferences
+import com.biblereadingpath.app.data.repository.AiRepository
 import com.biblereadingpath.app.data.repository.BibleRepository
-import com.biblereadingpath.app.data.repository.OllamaRepository
 import com.biblereadingpath.app.data.repository.PathRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -32,8 +33,10 @@ data class ChapterProgress(
 class RoadmapViewModel(
     private val pathRepository: PathRepository,
     private val bibleRepository: BibleRepository,
-    private val userPreferences: UserPreferences
+    private val userPreferences: UserPreferences,
+    context: Context
 ) : ViewModel() {
+    private val aiRepository = AiRepository(userPreferences, context)
 
     var books by mutableStateOf<List<BookProgress>>(emptyList())
         private set
@@ -121,35 +124,8 @@ class RoadmapViewModel(
             aiSummary = null
 
             try {
-                val ollamaRepository = OllamaRepository(userPreferences)
-                val prompt = "Provide a brief overview of the book of $bookName from the Bible, including its main themes, purpose, and key messages."
-
-                val urlInput = userPreferences.ollamaUrl.first() ?: "http://localhost:11434"
-                val model = userPreferences.ollamaModel.first() ?: "llama2"
-
-                var cleanUrl = urlInput.trim()
-                if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-                    cleanUrl = "http://$cleanUrl"
-                }
-                if (!cleanUrl.endsWith("/")) {
-                    cleanUrl = "$cleanUrl/"
-                }
-
-                val client = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build()
-
-                val api = retrofit2.Retrofit.Builder()
-                    .baseUrl(cleanUrl)
-                    .client(client)
-                    .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
-                    .build()
-                    .create(com.biblereadingpath.app.data.remote.OllamaApiService::class.java)
-
-                val response = api.generate(com.biblereadingpath.app.data.remote.OllamaRequest(model, prompt))
-                aiSummary = response.response
+                aiSummary = aiRepository.generateBookSummary(bookName)
+                    ?: "AI is not available. Check your AI settings and model status."
             } catch (e: Exception) {
                 aiSummary = "Error generating summary: ${e.message}"
             } finally {
@@ -176,34 +152,8 @@ class RoadmapViewModel(
                 }
 
                 val chapterText = chapterData.verses.joinToString(" ") { it.text }
-                val prompt = "Provide a brief devotional summary of $bookName chapter $chapter from the Bible. Here is the text: $chapterText"
-
-                val urlInput = userPreferences.ollamaUrl.first() ?: "http://localhost:11434"
-                val model = userPreferences.ollamaModel.first() ?: "llama2"
-
-                var cleanUrl = urlInput.trim()
-                if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-                    cleanUrl = "http://$cleanUrl"
-                }
-                if (!cleanUrl.endsWith("/")) {
-                    cleanUrl = "$cleanUrl/"
-                }
-
-                val client = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build()
-
-                val api = retrofit2.Retrofit.Builder()
-                    .baseUrl(cleanUrl)
-                    .client(client)
-                    .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
-                    .build()
-                    .create(com.biblereadingpath.app.data.remote.OllamaApiService::class.java)
-
-                val response = api.generate(com.biblereadingpath.app.data.remote.OllamaRequest(model, prompt))
-                aiSummary = response.response
+                aiSummary = aiRepository.generateChapterSummary(bookName, chapter, chapterText)
+                    ?: "AI is not available. Check your AI settings and model status."
             } catch (e: Exception) {
                 aiSummary = "Error generating summary: ${e.message}"
             } finally {

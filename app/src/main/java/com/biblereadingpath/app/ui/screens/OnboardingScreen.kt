@@ -12,10 +12,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.biblereadingpath.app.data.remote.OnDeviceLlmService
+import com.biblereadingpath.app.data.repository.AiProvider
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -26,7 +29,13 @@ fun OnboardingScreen(
     userPreferences: com.biblereadingpath.app.data.preferences.UserPreferences,
     onComplete: () -> Unit
 ) {
+    val context = LocalContext.current
+    val onDeviceLlmService = remember { OnDeviceLlmService(context) }
+    val coroutineScope = rememberCoroutineScope()
     var currentPage by remember { mutableStateOf(0) }
+    var aiSetupMessage by remember { mutableStateOf<String?>(null) }
+    var aiDownloadProgress by remember { mutableStateOf(0f) }
+    var isDownloadingAi by remember { mutableStateOf(false) }
     val pages = listOf(
         OnboardingPage(
             icon = "📖",
@@ -57,6 +66,12 @@ fun OnboardingScreen(
             title = "Earn Rewards & Go Ad-Free",
             description = "Watch rewarded ads to earn credits, then spend them to disable full-screen ads for extended periods. Build your streak and earn your way to an uninterrupted reading experience.",
             details = "Visit the Rewards tab to watch ads and purchase ad-free time. Credits can buy 1, 3, or 6 hours of ad-free reading. Banner ads will still appear, but full-screen ads will be disabled."
+        ),
+        OnboardingPage(
+            icon = "AI",
+            title = "Private AI Options",
+            description = "AI insights are optional. Use a remote Ollama server, or download Gemma 4 E2B to run explanations and summaries on this device with LiteRT-LM.",
+            details = "Gemma 4 E2B is about 2.6 GB. You can skip this now and manage AI later from Settings."
         )
     )
 
@@ -151,6 +166,90 @@ fun OnboardingScreen(
                     textAlign = TextAlign.Center,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
+
+                if (page.title == "Private AI Options") {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    userPreferences.setAiProvider(AiProvider.OFF.name)
+                                    aiSetupMessage = "AI is off. You can change this later in Settings."
+                                }
+                            },
+                            enabled = !isDownloadingAi,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Skip AI")
+                        }
+                        OutlinedButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    userPreferences.setAiProvider(AiProvider.OLLAMA.name)
+                                    aiSetupMessage = "Remote Ollama selected. Add your server URL in Settings."
+                                }
+                            },
+                            enabled = !isDownloadingAi,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Use Ollama Later")
+                        }
+                        Button(
+                            onClick = {
+                                coroutineScope.launch {
+                                    val model = OnDeviceLlmService.GemmaModel.E2B
+                                    isDownloadingAi = true
+                                    aiDownloadProgress = 0f
+                                    aiSetupMessage = "Downloading ${model.displayName}..."
+                                    userPreferences.setAiProvider(AiProvider.GEMMA_ON_DEVICE.name)
+                                    userPreferences.setGemmaModel(model.id)
+                                    val file = onDeviceLlmService.downloadModel(model) { progress ->
+                                        aiDownloadProgress = progress.coerceIn(0f, 1f)
+                                    }
+                                    if (file == null) {
+                                        aiSetupMessage = "Download failed. You can try again from Settings."
+                                    } else {
+                                        userPreferences.setGemmaModelPath(file.absolutePath)
+                                        aiSetupMessage = "Gemma 4 E2B downloaded. Initializing..."
+                                        val ready = onDeviceLlmService.initialize(file)
+                                        aiSetupMessage = if (ready) {
+                                            "Gemma 4 E2B is ready for on-device AI."
+                                        } else {
+                                            "Downloaded Gemma 4 E2B, but initialization failed on this device."
+                                        }
+                                    }
+                                    isDownloadingAi = false
+                                }
+                            },
+                            enabled = !isDownloadingAi,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Download Gemma 4 E2B")
+                        }
+                    }
+
+                    if (isDownloadingAi) {
+                        LinearProgressIndicator(
+                            progress = aiDownloadProgress,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 16.dp)
+                        )
+                    }
+
+                    aiSetupMessage?.let { message ->
+                        Text(
+                            text = message,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
+                    }
+                }
             }
 
             // Navigation buttons

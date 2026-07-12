@@ -14,7 +14,7 @@ import com.biblereadingpath.app.data.local.entity.NoteEntity
 import com.biblereadingpath.app.data.local.entity.ProgressEntity
 import com.biblereadingpath.app.data.preferences.UserPreferences
 import com.biblereadingpath.app.data.repository.BibleRepository
-import com.biblereadingpath.app.data.repository.OllamaRepository
+import com.biblereadingpath.app.data.repository.AiRepository
 import com.biblereadingpath.app.data.repository.PathRepository
 import com.biblereadingpath.app.domain.model.Chapter
 import com.biblereadingpath.app.domain.model.Verse
@@ -43,7 +43,7 @@ class ReaderViewModel(
     private val firebaseManager: FirebaseManager,
     context: Context
 ) : ViewModel() {
-    private val ollamaRepository = OllamaRepository(userPreferences)
+    private val aiRepository = AiRepository(userPreferences, context)
     private val ttsManager = TtsManager(context)
 
     var chapter by mutableStateOf<Chapter?>(null)
@@ -241,7 +241,7 @@ class ReaderViewModel(
         viewModelScope.launch {
             isGeneratingAi = true
             aiExplanation = null
-            aiExplanation = ollamaRepository.getExplanation(text)
+            aiExplanation = aiRepository.explainVerse(text) ?: "AI is not available. Check your AI settings and model status."
             isGeneratingAi = false
         }
     }
@@ -275,7 +275,7 @@ class ReaderViewModel(
                     isGeneratingCompletionMessage = true
                     completionMessage = null
                     try {
-                        val aiMessage = ollamaRepository.generateCompletionMessage(ch.book, ch.number)
+                        val aiMessage = aiRepository.generateCompletionMessage(ch.book, ch.number)
                         completionMessage = aiMessage ?: "Chapter completed! Great job!"
                     } catch (e: Exception) {
                         completionMessage = "Chapter completed! Great job!"

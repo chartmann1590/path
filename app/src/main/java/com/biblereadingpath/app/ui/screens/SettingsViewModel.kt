@@ -10,7 +10,9 @@ import com.biblereadingpath.app.analytics.FirebaseManager
 import com.biblereadingpath.app.data.backup.BackupManager
 import com.biblereadingpath.app.data.local.PathDatabase
 import com.biblereadingpath.app.data.preferences.UserPreferences
+import com.biblereadingpath.app.data.repository.AiProvider
 import com.biblereadingpath.app.data.repository.OllamaRepository
+import com.biblereadingpath.app.data.remote.OnDeviceLlmService
 import com.biblereadingpath.app.ui.components.TtsManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -29,6 +31,7 @@ class SettingsViewModel(
 ) : ViewModel() {
     private val ttsManager = TtsManager(context)
     private val ollamaRepository = OllamaRepository(userPreferences)
+    private val onDeviceLlmService = OnDeviceLlmService(context)
 
     private val database = Room.databaseBuilder(
         context,
@@ -40,6 +43,24 @@ class SettingsViewModel(
 
     val aiEnabled: StateFlow<Boolean> = userPreferences.aiEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val aiProvider: StateFlow<String> = userPreferences.aiProvider
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), AiProvider.OFF.name)
+
+    val gemmaModel: StateFlow<String> = userPreferences.gemmaModel
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), OnDeviceLlmService.GemmaModel.E2B.id)
+
+    val gemmaModelPath: StateFlow<String?> = userPreferences.gemmaModelPath
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    private val _gemmaDownloadProgress = MutableStateFlow(0f)
+    val gemmaDownloadProgress = _gemmaDownloadProgress.asStateFlow()
+
+    private val _isDownloadingGemma = MutableStateFlow(false)
+    val isDownloadingGemma = _isDownloadingGemma.asStateFlow()
+
+    private val _gemmaStatusMessage = MutableStateFlow<String?>(null)
+    val gemmaStatusMessage = _gemmaStatusMessage.asStateFlow()
         
     // Local state for UI to ensure smooth typing
     private val _ollamaUrlInput = MutableStateFlow("http://localhost:11434")
@@ -87,6 +108,102 @@ class SettingsViewModel(
             // Track AI settings change in Firebase
             firebaseManager.logAiEnabled(enabled)
             // Don't auto-fetch on enable if URL is likely localhost on device, let user refresh manually
+        }
+    }
+
+    fun setAiProvider(providerName: String) {
+        viewModelScope.launch {
+            userPreferences.setAiProvider(providerName)
+            firebaseManager.logAiEnabled(providerName != AiProvider.OFF.name)
+        }
+    }
+
+    fun setGemmaModel(modelId: String) {
+        viewModelScope.launch {
+            userPreferences.setGemmaModel(modelId)
+            val model = OnDeviceLlmService.GemmaModel.fromId(modelId)
+            val file = onDeviceLlmService.getDownloadedModelFile(model)
+            userPreferences.setGemmaModelPath(file?.absolutePath)
+            _gemmaStatusMessage.value = if (file == null) {
+                "${model.displayName} is not downloaded."
+            } else {
+                "${model.displayName} is downloaded."
+            }
+        }
+    }
+
+    fun refreshGemmaStatus() {
+        viewModelScope.launch {
+            val model = OnDeviceLlmService.GemmaModel.fromId(gemmaModel.value)
+            val file = onDeviceLlmService.getDownloadedModelFile(model)
+            userPreferences.setGemmaModelPath(file?.absolutePath)
+            _gemmaStatusMessage.value = if (file == null) {
+                "${model.displayName} is not downloaded."
+            } else {
+                "${model.displayName} is ready to initialize."
+            }
+        }
+    }
+
+    fun downloadSelectedGemmaModel() {
+        viewModelScope.launch {
+            val model = OnDeviceLlmService.GemmaModel.fromId(gemmaModel.value)
+            _isDownloadingGemma.value = true
+            _gemmaDownloadProgress.value = 0f
+            _gemmaStatusMessage.value = "Downloading ${model.displayName} (${model.approximateSize})..."
+            try {
+                val file = onDeviceLlmService.downloadModel(model) { progress ->
+                    _gemmaDownloadProgress.value = progress.coerceIn(0f, 1f)
+                }
+                if (file == null) {
+                    _gemmaStatusMessage.value = "Download failed. Check your connection and storage, then try again."
+                } else {
+                    userPreferences.setGemmaModelPath(file.absolutePath)
+                    _gemmaStatusMessage.value = "${model.displayName} downloaded. Initializing..."
+                    val initialized = onDeviceLlmService.initialize(file)
+                    _gemmaStatusMessage.value = if (initialized) {
+                        "${model.displayName} is ready for on-device AI."
+                    } else {
+                        "Downloaded ${model.displayName}, but initialization failed on this device."
+                    }
+                }
+            } finally {
+                _isDownloadingGemma.value = false
+            }
+        }
+    }
+
+    fun initializeSelectedGemmaModel() {
+        viewModelScope.launch {
+            val model = OnDeviceLlmService.GemmaModel.fromId(gemmaModel.value)
+            val file = onDeviceLlmService.getDownloadedModelFile(model)
+            if (file == null) {
+                _gemmaStatusMessage.value = "${model.displayName} is not downloaded."
+                userPreferences.setGemmaModelPath(null)
+                return@launch
+            }
+            _gemmaStatusMessage.value = "Initializing ${model.displayName}..."
+            val initialized = onDeviceLlmService.initialize(file)
+            userPreferences.setGemmaModelPath(if (initialized) file.absolutePath else null)
+            _gemmaStatusMessage.value = if (initialized) {
+                "${model.displayName} is ready."
+            } else {
+                "Could not initialize ${model.displayName} on this device."
+            }
+        }
+    }
+
+    fun deleteSelectedGemmaModel() {
+        viewModelScope.launch {
+            val model = OnDeviceLlmService.GemmaModel.fromId(gemmaModel.value)
+            val deleted = onDeviceLlmService.deleteModel(model)
+            userPreferences.setGemmaModelPath(null)
+            _gemmaDownloadProgress.value = 0f
+            _gemmaStatusMessage.value = if (deleted) {
+                "${model.displayName} removed from this device."
+            } else {
+                "Could not remove ${model.displayName}."
+            }
         }
     }
     

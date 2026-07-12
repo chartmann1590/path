@@ -31,7 +31,6 @@ import com.biblereadingpath.app.data.local.PathDatabase
 import com.biblereadingpath.app.data.preferences.UserPreferences
 import com.biblereadingpath.app.data.repository.BibleRepository
 import com.biblereadingpath.app.data.repository.AchievementRepository
-import com.biblereadingpath.app.data.repository.OllamaRepository
 import com.biblereadingpath.app.data.repository.PathRepository
 import com.biblereadingpath.app.data.repository.StudyPlanRepository
 import com.biblereadingpath.app.data.repository.AchievementDefinition
@@ -323,7 +322,7 @@ fun PathApp(
             }
             composable(Screen.Roadmap.route) {
                 RoadmapScreen(
-                    viewModel = remember { RoadmapViewModel(pathRepository, bibleRepository, userPreferences) },
+                    viewModel = remember { RoadmapViewModel(pathRepository, bibleRepository, userPreferences, context) },
                     onNavigateBack = { navController.popBackStack() }
                 )
             }
@@ -369,14 +368,13 @@ fun PathApp(
             ) { backStackEntry ->
                 val book = backStackEntry.arguments?.getString("book") ?: ""
                 val chapter = backStackEntry.arguments?.getInt("chapter") ?: 1
-                val ollamaRepository = remember { OllamaRepository(userPreferences) }
                 QuizScreen(
                     viewModel = remember { 
                         QuizViewModel(
-                            ollamaRepository = ollamaRepository,
                             pathRepository = pathRepository,
                             bibleRepository = bibleRepository,
                             userPreferences = userPreferences,
+                            context = context,
                             book = book,
                             chapter = chapter
                         )

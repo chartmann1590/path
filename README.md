@@ -19,7 +19,7 @@ A calm, mobile-first Bible study app that helps Christians stay focused and cons
 - **Notes & Highlights**: Write notes and highlight verses, all stored locally
 - **Verse of the Day**: Daily featured verse on the home screen
 - **Offline-First**: Works completely offline with no accounts required
-- **Optional AI Integration**: Self-hosted Ollama support for verse explanations (off by default)
+- **Optional AI Integration**: Choose remote Ollama or private on-device Gemma 4 with LiteRT-LM (off by default)
 - **Text-to-Speech**: Listen to Bible passages with customizable voices
 - **Home Screen Widgets**: Verse of the Day, progress tracking, and encouragement widgets
 
@@ -37,6 +37,7 @@ Help Christians build a consistent Bible study habit by removing friction, reduc
 - **Navigation**: Android Navigation Component
 - **Widgets**: Glance AppWidget
 - **Network**: Retrofit (for Bible API and optional Ollama integration)
+- **On-device AI**: Google LiteRT-LM with downloadable Gemma 4 E2B/E4B models
 
 ## 📋 Requirements
 
@@ -101,11 +102,13 @@ Help Christians build a consistent Bible study habit by removing friction, reduc
 
 If you want to use AI-powered verse explanations:
 
-1. Set up a local Ollama server (see [Ollama documentation](https://ollama.ai/))
-2. In app Settings, enable AI
-3. Enter your Ollama server URL (e.g., `http://192.168.1.100:11434`)
-4. Fetch and select a model from your server
-5. Use "Explain with AI" in the reader screen
+1. Open Settings > AI Insights
+2. Choose one provider:
+   - **Remote Ollama**: Enter your Ollama server URL (e.g., `http://192.168.1.100:11434`), fetch models, and select one
+   - **On-device Gemma 4**: Choose Gemma 4 E2B or E4B, download the model, then tap Test to initialize it with LiteRT-LM
+3. Use "Explain with AI" in the reader screen, AI summaries in favorites/roadmap, or generated quizzes
+
+On-device Gemma 4 downloads are large. E2B is about 2.6 GB and is the recommended mobile default; E4B is about 3.7 GB and may need more storage and memory.
 
 **Note**: AI features are completely optional and the app works fully without them.
 
@@ -163,7 +166,7 @@ app/src/main/java/com/path/app/
 
 - **No accounts required**: No login, no cloud sync
 - **Local-only storage**: All data (notes, progress, preferences) stored on your device
-- **Optional AI**: AI features connect only to your self-hosted Ollama server
+- **Optional AI**: AI can stay fully on-device with Gemma 4 and LiteRT-LM, or connect only to your configured Ollama server
 - **Analytics & Ads**: Uses Google Analytics for app usage insights and displays Google AdMob ads
   - **Note for developers**: When building from source, you can disable analytics/ads in debug builds by modifying `FirebaseManager.kt` and using test ad unit IDs
 

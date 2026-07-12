@@ -11,7 +11,7 @@ import com.biblereadingpath.app.analytics.FirebaseManager
 import com.biblereadingpath.app.data.local.entity.CollectionEntity
 import com.biblereadingpath.app.data.local.entity.FavoriteEntity
 import com.biblereadingpath.app.data.preferences.UserPreferences
-import com.biblereadingpath.app.data.repository.OllamaRepository
+import com.biblereadingpath.app.data.repository.AiRepository
 import com.biblereadingpath.app.data.repository.PathRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -28,7 +28,7 @@ class FavoritesViewModel(
     private val context: Context
 ) : ViewModel() {
 
-    private val ollamaRepository = OllamaRepository(userPreferences)
+    private val aiRepository = AiRepository(userPreferences, context)
 
     val favorites = pathRepository.getAllFavorites()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -103,34 +103,9 @@ class FavoritesViewModel(
             aiSummary = null
 
             try {
-                val prompt = "Provide a brief devotional explanation of this Bible verse: ${favorite.bookName} ${favorite.chapter}:${favorite.verseNumber} - \"${favorite.verseText}\""
-
-                val urlInput = userPreferences.ollamaUrl.first() ?: "http://localhost:11434"
-                val model = userPreferences.ollamaModel.first() ?: "llama2"
-
-                var cleanUrl = urlInput.trim()
-                if (!cleanUrl.startsWith("http://") && !cleanUrl.startsWith("https://")) {
-                    cleanUrl = "http://$cleanUrl"
-                }
-                if (!cleanUrl.endsWith("/")) {
-                    cleanUrl = "$cleanUrl/"
-                }
-
-                val client = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(30, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                    .retryOnConnectionFailure(true)
-                    .build()
-
-                val api = retrofit2.Retrofit.Builder()
-                    .baseUrl(cleanUrl)
-                    .client(client)
-                    .addConverterFactory(retrofit2.converter.gson.GsonConverterFactory.create())
-                    .build()
-                    .create(com.biblereadingpath.app.data.remote.OllamaApiService::class.java)
-
-                val response = api.generate(com.biblereadingpath.app.data.remote.OllamaRequest(model, prompt))
-                aiSummary = response.response
+                val reference = "${favorite.bookName} ${favorite.chapter}:${favorite.verseNumber}"
+                aiSummary = aiRepository.generateFavoriteSummary(reference, favorite.verseText)
+                    ?: "AI is not available. Check your AI settings and model status."
 
                 // Track AI summary generation in Firebase
                 firebaseManager.logAiSummaryGenerated("verse", favorite.bookName, favorite.chapter)

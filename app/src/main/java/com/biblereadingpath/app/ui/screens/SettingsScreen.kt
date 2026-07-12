@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
@@ -30,6 +31,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import com.biblereadingpath.app.data.BibleTranslations
+import com.biblereadingpath.app.data.remote.OnDeviceLlmService
+import com.biblereadingpath.app.data.repository.AiProvider
 import com.biblereadingpath.app.ui.theme.ReaderTheme
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -41,13 +44,18 @@ fun SettingsScreen(
     onNavigateToFeedback: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    val aiEnabled by viewModel.aiEnabled.collectAsState()
+    val aiProvider by viewModel.aiProvider.collectAsState()
     val ollamaUrl by viewModel.ollamaUrlInput.collectAsState()
     val ollamaModel by viewModel.ollamaModel.collectAsState()
     val availableModels by viewModel.availableModels.collectAsState()
     val isLoadingModels by viewModel.isLoadingModels.collectAsState()
     val modelFetchError by viewModel.modelFetchError.collectAsState()
     val urlValidationError by viewModel.urlValidationError.collectAsState()
+    val gemmaModel by viewModel.gemmaModel.collectAsState()
+    val gemmaModelPath by viewModel.gemmaModelPath.collectAsState()
+    val gemmaDownloadProgress by viewModel.gemmaDownloadProgress.collectAsState()
+    val isDownloadingGemma by viewModel.isDownloadingGemma.collectAsState()
+    val gemmaStatusMessage by viewModel.gemmaStatusMessage.collectAsState()
 
     val voices by viewModel.ttsVoices.collectAsState()
     val currentVoiceName by viewModel.currentVoice.collectAsState()
@@ -185,18 +193,47 @@ fun SettingsScreen(
             }
         }
 
-        ListItem(
-            headlineContent = { Text("AI Insights (Ollama)") },
-            supportingContent = { Text("Get AI-generated summaries and explanations.") },
-            trailingContent = {
-                Switch(
-                    checked = aiEnabled,
-                    onCheckedChange = { viewModel.setAiEnabled(it) }
-                )
-            }
+        Text(
+            text = "AI Insights",
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
+
+        Text(
+            text = "Choose remote Ollama or private on-device Gemma 4.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
+
+        Column(
+            modifier = Modifier.padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            AiProviderRow(
+                title = "Off",
+                description = "Hide AI actions and skip generation.",
+                selected = aiProvider == AiProvider.OFF.name,
+                onClick = { viewModel.setAiProvider(AiProvider.OFF.name) }
+            )
+            AiProviderRow(
+                title = "Remote Ollama",
+                description = "Use your self-hosted Ollama server.",
+                selected = aiProvider == AiProvider.OLLAMA.name,
+                onClick = { viewModel.setAiProvider(AiProvider.OLLAMA.name) }
+            )
+            AiProviderRow(
+                title = "On-device Gemma 4",
+                description = "Download Gemma 4 and run AI locally with LiteRT-LM.",
+                selected = aiProvider == AiProvider.GEMMA_ON_DEVICE.name,
+                onClick = {
+                    viewModel.setAiProvider(AiProvider.GEMMA_ON_DEVICE.name)
+                    viewModel.refreshGemmaStatus()
+                }
+            )
+        }
         
-        if (aiEnabled) {
+        if (aiProvider == AiProvider.OLLAMA.name) {
             OutlinedTextField(
                 value = ollamaUrl,
                 onValueChange = { viewModel.setOllamaUrl(it) },
@@ -263,6 +300,103 @@ fun SettingsScreen(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        if (aiProvider == AiProvider.GEMMA_ON_DEVICE.name) {
+            var gemmaExpanded by remember { mutableStateOf(false) }
+            val selectedModel = OnDeviceLlmService.GemmaModel.fromId(gemmaModel)
+            val isDownloaded = gemmaModelPath != null
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            ExposedDropdownMenuBox(
+                expanded = gemmaExpanded,
+                onExpandedChange = { gemmaExpanded = !gemmaExpanded },
+                modifier = Modifier.padding(horizontal = 16.dp)
+            ) {
+                OutlinedTextField(
+                    value = "${selectedModel.displayName} (${selectedModel.approximateSize})",
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Gemma 4 model") },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = gemmaExpanded) },
+                    colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(),
+                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                )
+                ExposedDropdownMenu(
+                    expanded = gemmaExpanded,
+                    onDismissRequest = { gemmaExpanded = false }
+                ) {
+                    OnDeviceLlmService.GemmaModel.entries.forEach { model ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(model.displayName)
+                                    Text(
+                                        text = model.approximateSize,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            },
+                            onClick = {
+                                viewModel.setGemmaModel(model.id)
+                                gemmaExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
+
+            if (gemmaStatusMessage != null) {
+                Text(
+                    text = gemmaStatusMessage!!,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            if (isDownloadingGemma) {
+                LinearProgressIndicator(
+                    progress = gemmaDownloadProgress,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = { viewModel.downloadSelectedGemmaModel() },
+                    enabled = !isDownloadingGemma,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(if (isDownloaded) "Re-download" else "Download")
+                }
+                OutlinedButton(
+                    onClick = { viewModel.initializeSelectedGemmaModel() },
+                    enabled = isDownloaded && !isDownloadingGemma,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("Test")
+                }
+                IconButton(
+                    onClick = { viewModel.deleteSelectedGemmaModel() },
+                    enabled = isDownloaded && !isDownloadingGemma
+                ) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete downloaded Gemma model")
                 }
             }
         }
@@ -605,5 +739,25 @@ fun SettingsScreen(
             }
         )
     }
+}
+
+@Composable
+private fun AiProviderRow(
+    title: String,
+    description: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    ListItem(
+        headlineContent = { Text(title) },
+        supportingContent = { Text(description) },
+        leadingContent = {
+            RadioButton(
+                selected = selected,
+                onClick = onClick
+            )
+        },
+        modifier = Modifier.clickable { onClick() }
+    )
 }
 
