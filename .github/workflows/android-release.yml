@@ -85,19 +85,41 @@ jobs:
       - name: Build release APK and app bundle
         run: ./gradlew --no-daemon clean test assembleRelease bundleRelease
 
+      - name: Read release metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_name="$(sed -n 's/.*<string name="app_name">\([^<]*\)<\/string>.*/\1/p' app/src/main/res/values/strings.xml | head -n 1)"
+          version_name="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)"
+          version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' app/build.gradle.kts | head -n 1)"
+
+          if [ -z "$app_name" ] || [ -z "$version_name" ] || [ -z "$version_code" ]; then
+            echo "Unable to read app_name, versionName, or versionCode."
+            exit 1
+          fi
+
+          file_prefix="$(printf '%s-%s-%s' "$app_name" "$version_name" "$version_code" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9._-]/-/g; s/-\+/-/g; s/^-//; s/-$//')"
+
+          {
+            echo "APP_NAME=$app_name"
+            echo "VERSION_NAME=$version_name"
+            echo "VERSION_CODE=$version_code"
+            echo "RELEASE_FILE_PREFIX=$file_prefix"
+          } >> "$GITHUB_ENV"
+
       - name: Collect release artifacts
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/release/*.apk release-artifacts/
-          cp app/build/outputs/bundle/release/*.aab release-artifacts/
-          sha256sum release-artifacts/* > release-artifacts/SHA256SUMS.txt
+          cp app/build/outputs/apk/release/*.apk "release-artifacts/${RELEASE_FILE_PREFIX}-release.apk"
+          cp app/build/outputs/bundle/release/*.aab "release-artifacts/${RELEASE_FILE_PREFIX}-release.aab"
+          sha256sum release-artifacts/* > "release-artifacts/${RELEASE_FILE_PREFIX}-SHA256SUMS.txt"
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: android-release-${{ github.sha }}
+          name: ${{ env.RELEASE_FILE_PREFIX }}-android-release-${{ github.sha }}
           path: release-artifacts/*
           if-no-files-found: error
           retention-days: 30
@@ -109,10 +131,12 @@ jobs:
         run: |
           set -euo pipefail
           short_sha="${GITHUB_SHA::7}"
-          tag="release-${GITHUB_RUN_NUMBER}-${short_sha}"
-          title="Android release ${short_sha}"
+          tag="${RELEASE_FILE_PREFIX}-${GITHUB_RUN_NUMBER}-${short_sha}"
+          title="${APP_NAME} ${VERSION_NAME} (${VERSION_CODE}) release ${short_sha}"
 
           gh release create "$tag" release-artifacts/* \
             --target "$GITHUB_SHA" \
             --title "$title" \
-            --notes "Automated release for commit ${GITHUB_SHA}."
+            --notes "Automated ${APP_NAME} ${VERSION_NAME} (${VERSION_CODE}) release for commit ${GITHUB_SHA}."
+
+          gh release edit "$tag" --draft=false --latest
