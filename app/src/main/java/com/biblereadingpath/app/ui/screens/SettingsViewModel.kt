@@ -182,13 +182,21 @@ class SettingsViewModel(
                 userPreferences.setGemmaModelPath(null)
                 return@launch
             }
-            _gemmaStatusMessage.value = "Initializing ${model.displayName}..."
+            _gemmaStatusMessage.value = "Testing ${model.displayName}..."
             val initialized = onDeviceLlmService.initialize(file)
             userPreferences.setGemmaModelPath(if (initialized) file.absolutePath else null)
-            _gemmaStatusMessage.value = if (initialized) {
-                "${model.displayName} is ready."
+            if (!initialized) {
+                _gemmaStatusMessage.value = "Could not initialize ${model.displayName} on this device."
+                return@launch
+            }
+
+            val response = onDeviceLlmService.generate(
+                "Reply with one short sentence: what is the main theme of John 3:16?"
+            )
+            _gemmaStatusMessage.value = if (response.isNullOrBlank()) {
+                "Initialized ${model.displayName}, but the test response failed."
             } else {
-                "Could not initialize ${model.displayName} on this device."
+                "${model.displayName} test response: ${response.take(120)}"
             }
         }
     }

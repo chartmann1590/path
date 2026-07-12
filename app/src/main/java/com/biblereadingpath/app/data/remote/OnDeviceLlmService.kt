@@ -1,6 +1,7 @@
 package com.biblereadingpath.app.data.remote
 
 import android.content.Context
+import android.util.Log
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.ConversationConfig
 import com.google.ai.edge.litertlm.Content
@@ -20,6 +21,10 @@ import java.util.concurrent.TimeUnit
 class OnDeviceLlmService(
     private val context: Context
 ) {
+    private companion object {
+        const val TAG = "OnDeviceLlmService"
+    }
+
     enum class ModelStatus {
         NOT_DOWNLOADED,
         DOWNLOADING,
@@ -108,6 +113,7 @@ class OnDeviceLlmService(
                 initializedModelPath = modelFile.absolutePath
                 true
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to initialize on-device model: ${modelFile.absolutePath}", e)
                 releaseLocked()
                 false
             }
@@ -138,6 +144,7 @@ class OnDeviceLlmService(
                         .ifBlank { null }
                 }
             } catch (e: Exception) {
+                Log.e(TAG, "Failed to generate on-device response", e)
                 null
             }
         }
