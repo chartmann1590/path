@@ -29,12 +29,12 @@ val releaseKeyPassword = propertyOrEnv("release.key.password", "RELEASE_KEY_PASS
 
 android {
     namespace = "com.biblereadingpath.app"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.biblereadingpath.app"
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = (System.getenv("ANDROID_VERSION_CODE") ?: "3").toInt()
         versionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.1.0"
 
