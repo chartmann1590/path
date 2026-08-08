@@ -1,5 +1,6 @@
 ﻿package com.biblereadingpath.app.ui.screens
 
+import android.app.Activity
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -40,6 +41,7 @@ import androidx.compose.material.icons.filled.Image
 
 import com.biblereadingpath.app.ui.components.AdMobInterstitialManager
 import com.biblereadingpath.app.data.preferences.UserPreferences
+import com.biblereadingpath.app.review.ReviewPrompter
 import com.biblereadingpath.app.ui.components.TutorialOverlay
 import com.biblereadingpath.app.ui.components.TutorialTarget
 import com.biblereadingpath.app.ui.components.TutorialStep
@@ -183,7 +185,8 @@ fun ReaderScreen(
         }
     }
     val context = LocalContext.current
-    
+    val reviewPromptScope = rememberCoroutineScope()
+
     // AI State
     val aiExplanation = viewModel.aiExplanation
     val isGeneratingAi = viewModel.isGeneratingAi
@@ -538,6 +541,9 @@ fun ReaderScreen(
                                 HapticFeedback.success(context)
                                 triggerAchievementChecks()
                                 interstitialAdManager?.tryShowAd()
+                                (context as? Activity)?.let { activity ->
+                                    reviewPromptScope.launch { ReviewPrompter.maybeRequestReview(activity) }
+                                }
                                 onBack()
                             }
                         },
