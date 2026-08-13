@@ -41,7 +41,8 @@ fun SettingsScreen(
     viewModel: SettingsViewModel,
     onNavigateToAbout: () -> Unit = {},
     onNavigateToOnboarding: () -> Unit = {},
-    onNavigateToFeedback: () -> Unit = {}
+    onNavigateToFeedback: () -> Unit = {},
+    onNavigateToMoreApps: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val aiProvider by viewModel.aiProvider.collectAsState()
@@ -726,6 +727,16 @@ fun SettingsScreen(
             supportingContent = { Text("App information and GitHub repository") },
             modifier = Modifier.clickable {
                 onNavigateToAbout()
+            }
+        )
+
+        Divider(modifier = Modifier.padding(vertical = 16.dp))
+
+        ListItem(
+            headlineContent = { Text("More apps from this developer") },
+            supportingContent = { Text("Check out our other privacy-first apps") },
+            modifier = Modifier.clickable {
+                onNavigateToMoreApps()
             }
         )
 

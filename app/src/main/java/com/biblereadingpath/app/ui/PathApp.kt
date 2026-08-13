@@ -284,7 +284,15 @@ fun PathApp(
                     },
                     onNavigateToFeedback = {
                         navController.navigate(Screen.Feedback.route)
+                    },
+                    onNavigateToMoreApps = {
+                        navController.navigate(Screen.MoreApps.route)
                     }
+                )
+            }
+            composable(Screen.MoreApps.route) {
+                MoreAppsScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(Screen.Feedback.route) {

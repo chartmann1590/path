@@ -14,6 +14,7 @@ sealed class Screen(val route: String) {
     object Streak : Screen("streak")
     object Roadmap : Screen("roadmap")
     object About : Screen("about")
+    object MoreApps : Screen("more_apps")
     object Rewards : Screen("rewards")
     object Library : Screen("library")
     object Achievements : Screen("achievements")
