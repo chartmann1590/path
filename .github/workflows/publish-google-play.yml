@@ -27,9 +27,6 @@ jobs:
     timeout-minutes: 45
 
     env:
-      GH_API_TOKEN: ${{ secrets.GH_API_TOKEN }}
-      GH_REPO_OWNER: ${{ secrets.GH_REPO_OWNER }}
-      GH_REPO_NAME: ${{ secrets.GH_REPO_NAME }}
       ADMOB_APPLICATION_ID: ${{ secrets.ADMOB_APPLICATION_ID }}
       ADMOB_BANNER_AD_UNIT_ID: ${{ secrets.ADMOB_BANNER_AD_UNIT_ID }}
       ADMOB_INTERSTITIAL_AD_UNIT_ID: ${{ secrets.ADMOB_INTERSTITIAL_AD_UNIT_ID }}
@@ -62,9 +59,6 @@ jobs:
         run: |
           missing=()
           for name in \
-            GH_API_TOKEN \
-            GH_REPO_OWNER \
-            GH_REPO_NAME \
             ADMOB_APPLICATION_ID \
             ADMOB_BANNER_AD_UNIT_ID \
             ADMOB_INTERSTITIAL_AD_UNIT_ID \

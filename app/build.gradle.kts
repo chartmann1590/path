@@ -46,19 +46,12 @@ android {
         // Enable multidex for release
         multiDexEnabled = true
 
-        val githubToken = propertyOrEnv("github.api.token", "GH_API_TOKEN")
-        val githubOwner = propertyOrEnv("github.repo.owner", "GH_REPO_OWNER")
-        val githubRepo = propertyOrEnv("github.repo.name", "GH_REPO_NAME")
         val admobApplicationId = propertyOrEnv("admob.application.id", "ADMOB_APPLICATION_ID", "ca-app-pub-3940256099942544~3347511713")
         val admobBannerAdUnitId = propertyOrEnv("admob.banner.ad.unit.id", "ADMOB_BANNER_AD_UNIT_ID")
         val admobInterstitialAdUnitId = propertyOrEnv("admob.interstitial.ad.unit.id", "ADMOB_INTERSTITIAL_AD_UNIT_ID")
         val admobRewardedAdUnitId = propertyOrEnv("admob.rewarded.ad.unit.id", "ADMOB_REWARDED_AD_UNIT_ID")
 
         manifestPlaceholders["admobApplicationId"] = admobApplicationId
-        buildConfigField("String", "GITHUB_API_TOKEN", buildConfigString(githubToken))
-        buildConfigField("String", "GITHUB_REPO_OWNER", buildConfigString(githubOwner))
-        buildConfigField("String", "GITHUB_REPO_NAME", buildConfigString(githubRepo))
-        buildConfigField("String", "FEEDBACK_ASSETS_DIR", "\"feedback-assets\"")
         buildConfigField("String", "ADMOB_BANNER_AD_UNIT_ID", buildConfigString(admobBannerAdUnitId))
         buildConfigField("String", "ADMOB_INTERSTITIAL_AD_UNIT_ID", buildConfigString(admobInterstitialAdUnitId))
         buildConfigField("String", "ADMOB_REWARDED_AD_UNIT_ID", buildConfigString(admobRewardedAdUnitId))

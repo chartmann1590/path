@@ -11,8 +11,9 @@ The Android release workflow requires these repository secrets:
 - `ADMOB_BANNER_AD_UNIT_ID`: banner ad unit id
 - `ADMOB_INTERSTITIAL_AD_UNIT_ID`: interstitial ad unit id
 - `ADMOB_REWARDED_AD_UNIT_ID`: rewarded interstitial ad unit id
-- `GH_API_TOKEN`: token used by in-app feedback issue creation
-- `GH_REPO_OWNER`: feedback target repository owner
-- `GH_REPO_NAME`: feedback target repository name
+
+In-app feedback issue creation no longer needs a repo secret — the client talks to
+`cloudflare-worker/`, which holds the GitHub token as a Worker secret instead (see
+`npx wrangler secret put GITHUB_TOKEN` in that directory).
 
 The workflow validates these before building so a release cannot be created with missing production configuration.

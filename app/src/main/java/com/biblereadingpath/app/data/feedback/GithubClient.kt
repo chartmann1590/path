@@ -1,52 +1,33 @@
 package com.biblereadingpath.app.data.feedback
 
-import com.biblereadingpath.app.BuildConfig
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.concurrent.TimeUnit
 
+/**
+ * Talks to the cloudflare-worker/ feedback relay, not api.github.com directly. See
+ * cloudflare-worker/src/index.ts, which holds the GitHub token server-side as a Worker
+ * secret. Previously this embedded BuildConfig.GITHUB_API_TOKEN client-side as a Bearer
+ * header, which shipped a real repo-write PAT in every release build (extractable from
+ * the APK).
+ */
 object GithubClient {
-    private const val BASE_URL = "https://api.github.com/"
+    private const val BASE_URL = "https://path-github-feedback.charles-h-hartmann1.workers.dev/"
 
     val api: GithubApi by lazy { createRetrofit().create(GithubApi::class.java) }
 
-    val hasValidConfig: Boolean
-        get() = BuildConfig.GITHUB_API_TOKEN.isNotBlank() &&
-                BuildConfig.GITHUB_REPO_OWNER.isNotBlank() &&
-                BuildConfig.GITHUB_REPO_NAME.isNotBlank()
-
-    val owner: String get() = BuildConfig.GITHUB_REPO_OWNER
-    val repo: String get() = BuildConfig.GITHUB_REPO_NAME
-    val missingConfigMessage: String
-        get() {
-            val missing = mutableListOf<String>()
-            if (BuildConfig.GITHUB_API_TOKEN.isBlank()) missing.add("GitHub API token")
-            if (BuildConfig.GITHUB_REPO_OWNER.isBlank()) missing.add("repo owner")
-            if (BuildConfig.GITHUB_REPO_NAME.isBlank()) missing.add("repo name")
-            return if (missing.isEmpty()) ""
-            else "Missing GitHub config: ${missing.joinToString(", ")}. Set them in local.properties."
-        }
+    val hasValidConfig: Boolean = true
+    val missingConfigMessage: String = ""
 
     private fun createRetrofit(): Retrofit {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
-            redactHeader("Authorization")
         }
 
         val client = OkHttpClient.Builder()
             .addInterceptor(logging)
-            .addInterceptor { chain ->
-                val request = chain.request().newBuilder()
-                    .addHeader("Accept", "application/vnd.github+json")
-                    .addHeader("X-GitHub-Api-Version", "2022-11-28")
-                    .addHeader("User-Agent", "Path-Android/1.1.0")
-                if (BuildConfig.GITHUB_API_TOKEN.isNotBlank()) {
-                    request.addHeader("Authorization", "Bearer ${BuildConfig.GITHUB_API_TOKEN}")
-                }
-                chain.proceed(request.build())
-            }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)

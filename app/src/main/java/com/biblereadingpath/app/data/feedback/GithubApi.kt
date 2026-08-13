@@ -4,41 +4,29 @@ import retrofit2.Response
 import retrofit2.http.*
 
 interface GithubApi {
-    @POST("repos/{owner}/{repo}/issues")
+    @POST("issue")
     suspend fun createIssue(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
         @Body request: CreateIssueRequest
     ): Response<GithubIssue>
 
-    @GET("repos/{owner}/{repo}/issues/{number}")
+    @GET("issue/{number}")
     suspend fun getIssue(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
         @Path("number") number: Int
     ): Response<GithubIssue>
 
-    @GET("repos/{owner}/{repo}/issues/{number}/comments")
+    @GET("issue/{number}/comments")
     suspend fun getComments(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
         @Path("number") number: Int
     ): Response<List<GithubComment>>
 
-    @POST("repos/{owner}/{repo}/issues/{number}/comments")
+    @POST("issue/{number}/comments")
     suspend fun postComment(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
         @Path("number") number: Int,
         @Body request: PostCommentRequest
     ): Response<GithubComment>
 
-    @PUT("repos/{owner}/{repo}/contents/{assetDir}/{filename}")
+    @POST("upload-image")
     suspend fun uploadAsset(
-        @Path("owner") owner: String,
-        @Path("repo") repo: String,
-        @Path("assetDir") assetDir: String,
-        @Path("filename") filename: String,
         @Body request: UploadAssetRequest
     ): Response<UploadAssetResponse>
 }

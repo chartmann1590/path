@@ -4,7 +4,6 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.biblereadingpath.app.BuildConfig
 import com.biblereadingpath.app.data.feedback.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -122,14 +121,10 @@ class FeedbackViewModel(context: Context) : ViewModel() {
                     if (base64 != null) {
                         val filename = ImageUploadHelper.generateAssetFilename(null)
                         val uploadRequest = UploadAssetRequest(
-                            message = "Upload screenshot for feedback",
-                            content = base64
+                            filename = filename,
+                            contentBase64 = base64
                         )
-                        val uploadResponse = GithubClient.api.uploadAsset(
-                            GithubClient.owner, GithubClient.repo,
-                            BuildConfig.FEEDBACK_ASSETS_DIR, filename,
-                            uploadRequest
-                        )
+                        val uploadResponse = GithubClient.api.uploadAsset(uploadRequest)
                         if (uploadResponse.isSuccessful) {
                             val downloadUrl = uploadResponse.body()?.content?.downloadUrl ?: ""
                             body += "\n\n## Attachment\n\n![Screenshot]($downloadUrl)"
@@ -159,9 +154,7 @@ class FeedbackViewModel(context: Context) : ViewModel() {
                     body = body
                 )
 
-                val response = GithubClient.api.createIssue(
-                    GithubClient.owner, GithubClient.repo, issueRequest
-                )
+                val response = GithubClient.api.createIssue(issueRequest)
 
                 if (response.isSuccessful) {
                     val issue = response.body()!!
@@ -208,9 +201,7 @@ class FeedbackViewModel(context: Context) : ViewModel() {
         viewModelScope.launch {
             _isLoadingComments.value = true
             try {
-                val issueResponse = GithubClient.api.getIssue(
-                    GithubClient.owner, GithubClient.repo, number
-                )
+                val issueResponse = GithubClient.api.getIssue(number)
                 if (issueResponse.isSuccessful) {
                     val issue = issueResponse.body()!!
                     _issueDetail.value = issue
@@ -220,9 +211,7 @@ class FeedbackViewModel(context: Context) : ViewModel() {
                         repo.saveBugReport(currentReport.copy(status = issue.state))
                     }
                 }
-                val commentsResponse = GithubClient.api.getComments(
-                    GithubClient.owner, GithubClient.repo, number
-                )
+                val commentsResponse = GithubClient.api.getComments(number)
                 if (commentsResponse.isSuccessful) {
                     _comments.value = commentsResponse.body() ?: emptyList()
                 }
@@ -266,14 +255,10 @@ class FeedbackViewModel(context: Context) : ViewModel() {
                     if (base64 != null) {
                         val filename = ImageUploadHelper.generateAssetFilename(report.number)
                         val uploadRequest = UploadAssetRequest(
-                            message = "Upload screenshot for comment on #${report.number}",
-                            content = base64
+                            filename = filename,
+                            contentBase64 = base64
                         )
-                        val uploadResponse = GithubClient.api.uploadAsset(
-                            GithubClient.owner, GithubClient.repo,
-                            BuildConfig.FEEDBACK_ASSETS_DIR, filename,
-                            uploadRequest
-                        )
+                        val uploadResponse = GithubClient.api.uploadAsset(uploadRequest)
                         if (uploadResponse.isSuccessful) {
                             val downloadUrl = uploadResponse.body()?.content?.downloadUrl ?: ""
                             body += "\n\n## Attachment\n\n![Screenshot]($downloadUrl)"
@@ -290,7 +275,6 @@ class FeedbackViewModel(context: Context) : ViewModel() {
                 }
 
                 val response = GithubClient.api.postComment(
-                    GithubClient.owner, GithubClient.repo,
                     report.number,
                     PostCommentRequest(body)
                 )
