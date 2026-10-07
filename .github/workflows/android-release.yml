@@ -67,6 +67,8 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
 
       - name: Restore release-only files
         shell: bash
@@ -84,8 +86,10 @@ jobs:
         run: |
           set -euo pipefail
           app_name="$(sed -n 's/.*<string name="app_name">\([^<]*\)<\/string>.*/\1/p' app/src/main/res/values/strings.xml | head -n 1)"
-          version_name="$(sed -n 's/.*versionName = "\([^"]*\)".*/\1/p' app/build.gradle.kts | head -n 1)"
-          version_code="$(sed -n 's/.*versionCode = \([0-9][0-9]*\).*/\1/p' app/build.gradle.kts | head -n 1)"
+          # versionName/versionCode may be literals or env lookups with a literal fallback,
+          # e.g. versionName = System.getenv("ANDROID_VERSION_NAME") ?: "1.1.0"
+          version_name="${ANDROID_VERSION_NAME:-$(grep -m1 -E '^\s*versionName\s*=' app/build.gradle.kts | grep -oE '"[^"]*"' | tail -n 1 | tr -d '"' || true)}"
+          version_code="${ANDROID_VERSION_CODE:-$(grep -m1 -E '^\s*versionCode\s*=' app/build.gradle.kts | grep -oE '[0-9]+' | tail -n 1 || true)}"
 
           if [ -z "$app_name" ] || [ -z "$version_name" ] || [ -z "$version_code" ]; then
             echo "Unable to read app_name, versionName, or versionCode."
@@ -119,6 +123,7 @@ jobs:
           retention-days: 30
 
       - name: Create GitHub release
+        if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
