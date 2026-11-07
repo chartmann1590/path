@@ -85,7 +85,7 @@ fun MoreAppsScreen(onNavigateBack: () -> Unit) {
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable {
-                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=${app.packageName}"))
+                            val intent = Intent(Intent.ACTION_VIEW, Uri.parse((if (com.biblereadingpath.app.BuildConfig.STORE == "direct") "https://charleshartmann.com/apps/" else "https://play.google.com/store/apps/details?id=${app.packageName}")))
                             context.startActivity(intent)
                         },
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)

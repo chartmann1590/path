@@ -2,7 +2,7 @@ name: Android Release
 
 on:
   push:
-
+    branches-ignore: [direct-stripe]
 permissions:
   contents: write
 
