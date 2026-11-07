@@ -2,6 +2,7 @@ name: Android Release
 
 on:
   push:
+    branches-ignore: [amazon]  # amazon branch builds run in amazon.yml only (Tab, Nov 7 2026)
 
 permissions:
   contents: write
